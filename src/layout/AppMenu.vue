@@ -22,17 +22,17 @@ var icons = {"sun" : "M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6m0 1a4 4 0 1 0 0-8 4 4 0 
 
 
 const smartMeterNames = {
-  'sm-a-0': 'Stamping Press Meter',
-  'sm-a-1': 'Induction Heater Meter',
-  'sm-a-2': 'Robotic Arms A Meter',
-  'sm-a-3': 'Large Welder Meter',
-  'sm-a-4': 'Feeder Motor Meter',
-  'sm-a-5': 'Workshop A Control Meter',
-  'sm-b-0': 'Chassis Mounting Meter',
-  'sm-b-1': 'Robotic Arms B Meter',
-  'sm-b-2': 'Wiring Benches Meter',
-  'sm-b-3': 'Workshop B Control Meter',
-  'sm-b-4': 'Solar Inverter Meter'
+'sm-a-0': 'WS-A Stamping Press',
+  'sm-a-1': 'WS-A Induction Heater',
+  'sm-a-2': 'WS-A Coil feeder',
+  'sm-a-3': 'WS-A Large Welder',
+  'sm-a-4': 'WS-A Controls',
+  'sm-a-5': 'WS-A Utilities',
+  'sm-b-0': 'WS-B Chassis Mounting',
+  'sm-b-1': 'WS-B Robotic Arms',
+  'sm-b-2': 'WS-B Wiring Benches',
+  'sm-b-3': 'WS-B Control',
+  'sm-b-4': 'WS-B Utilities'
 }
 
 // Generate smart meter menu items

@@ -3,6 +3,7 @@ import { useLayout } from '@/layout/composables/layout';
 import DatePicker from '@/components/common/DatePicker.vue';
 import RefreshButton from '@/components/common/RefreshButton.vue';
 import AlertsTable from '@/components/dashboard/AlertsTable.vue';
+import AlertsHistory from '@/components/dashboard/AlertsHistory.vue';
 
 import { ref } from 'vue'
 import Button from 'primevue/button'
@@ -18,9 +19,6 @@ function signOut() {
   localStorage.removeItem('token');
   sessionStorage.removeItem('token');
   location.reload();                 // auth-guard will redirect
-
-  
-  
 }
 </script>
 
@@ -44,12 +42,20 @@ function signOut() {
             
             <div style="display: flex; gap: 8px; align-items: center;">
 
-                <Drawer :pt="{ root: { style: 'width:500px;' } }" v-model:visible="visibleRight" position="right" class="w-[700px]">
+                <Drawer :pt="{ root: { style: 'width:1010px;' } }" v-model:visible="visibleRight" position="right" class="w-[700px]">
+                    <p class="text-2xl text-bold flex items-center gap-3">Current System State And Alerts 
+                        <img 
+                        src="@/assets/images/RedDot.gif" 
+                        alt="Background image"
+                        class="h-[13px] mt-2"
+                        />
+                    </p>
                     <AlertsTable/>
+                    <p class="text-2xl text-bold mt-10">Alerts History</p>
+                    <AlertsHistory/>
                 </Drawer>
                  <div role="Button" class="border border-red-600 p-2 mr-4 w-[40px] h-[40px] rounded-full flex justify-center items-center cursor-pointer" @click="visibleRight = true">
                     <i class="bi bi-bell text-[25px] text-red-600"></i>
-
                  </div>
 
                 <DatePicker/>

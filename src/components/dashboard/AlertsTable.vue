@@ -1,8 +1,8 @@
 <template>
-  <Card class="h-fit flex flex-col  rounded-lg" :class="getContainerBorderClass()">
+  <Card class="h-fit flex flex-col  rounded-lg border" :class="getContainerBorderClass()">
 
     <template #title>
-      <div class="flex items-center justify-between mb-3 px-4 flex-shrink-0">
+      <div class="flex items-center justify-between mb-3 px-4 flex-shrink-0 ">
         <!-- Overall system state with back button when in detail view -->
         <div class="flex flex-row items-center gap-4">
           <!-- Back button (only show in detail view) -->

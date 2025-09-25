@@ -442,9 +442,9 @@ function updateChartOption() {
   }
 }
 
-// Watch for changes
+// Watch for changes - ✅ ADDED props.channels to dependencies
 watch(
-  () => [fromDate.value, toDate.value, resolution.value, refreshContext?.count], 
+  () => [fromDate.value, toDate.value, resolution.value, refreshContext?.count, props.channels], 
   () => { 
     if (auth.ready) {
       fetchData()

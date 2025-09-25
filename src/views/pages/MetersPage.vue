@@ -1,5 +1,3 @@
-<!-- Only the bottom part changed — here's the full file for safety -->
-
 <template>
   <div class="min-h-screen text-white p-6">
     <!-- Meter Selection -->
@@ -24,7 +22,7 @@
         <div class="h-80">
           <EnergyConsumptionHistory 
             :edge-id="'edge0'"
-            :channels="['meter0/ActiveEnergy', 'meter0/ReactiveEnergy']"
+            :channels="[`${channelPrefix}ActiveEnergy`, `${channelPrefix}ReactiveEnergy`]"
             :chart-type="'energy'"
           />
         </div>
@@ -71,7 +69,7 @@
         <div class="h-64">
           <EnergyConsumptionHistory 
             :edge-id="'edge0'"
-            :channels="['meter0/ActivePower']"
+            :channels="[`${channelPrefix}ActivePower`]"
             :chart-type="'power'"
           />
         </div>
@@ -137,6 +135,30 @@ const safeNumber = (val) => {
   const num = Number(val)
   return isNaN(num) ? 0 : num
 }
+
+// ✅ Meter ID → Index Map (copied from RealTimeMeterData.vue)
+const meterIdToIndex = {
+  'sm-a-0': 0,
+  'sm-a-1': 1,
+  'sm-a-2': 2,
+  'sm-a-3': 3,
+  'sm-a-4': 4,
+  'sm-a-5': 5,
+  'sm-b-0': 6,
+  'sm-b-1': 7,
+  'sm-b-2': 8,
+  'sm-b-3': 9,
+  'sm-b-4': 10
+}
+
+// ✅ Compute meter index based on route query
+const meterIndex = computed(() => {
+  const id = route.query.meterId
+  return meterIdToIndex[id] !== undefined ? meterIdToIndex[id] : 0
+})
+
+// ✅ Compute channel prefix dynamically
+const channelPrefix = computed(() => `meter${meterIndex.value}/`)
 </script>
 
 <style>
