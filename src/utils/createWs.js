@@ -12,6 +12,25 @@ import { useToast } from 'primevue/usetoast'
 export function createWs(router) {
   const toast = useToast()
 
+  /* ---------- determine WebSocket URL ---------- */
+  function getWebSocketUrl() {
+    const hostname = window.location.hostname
+    
+    // Check if we're in WebContainer environment
+    if (hostname.includes('webcontainer-api.io')) {
+      // Extract the base part and replace port for WebSocket
+      const parts = hostname.split('--')
+      if (parts.length >= 3) {
+        // Replace the port (middle part) with 8082
+        parts[1] = '8082'
+        return `ws://${parts.join('--')}`
+      }
+    }
+    
+    // Fallback to localhost for local development
+    return 'ws://localhost:8082'
+  }
+
   /* ---------- shared auth state ---------- */
   const stored = getStoredToken()
   const auth = reactive({
@@ -20,7 +39,7 @@ export function createWs(router) {
   })
 
   /* ---------- socket ---------- */
-  const ws = new WebSocket('ws://localhost:8082')
+  const ws = new WebSocket(getWebSocketUrl())
 
   /* ---------- verify token on open ---------- */
   ws.onopen = () => {
