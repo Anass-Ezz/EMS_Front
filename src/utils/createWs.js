@@ -15,15 +15,10 @@ export function createWs(router) {
   /* ---------- determine WebSocket URL ---------- */
   function getWebSocketUrl() {
     const hostname = window.location.hostname
-    
-    // Check if we're in WebContainer environment
-    if (hostname.includes('webcontainer-api.io')) {
-      // In WebContainer, use localhost directly for internal service communication
-      return 'ws://localhost:8082'
-    }
-    
-    // Fallback to localhost for local development
-    return 'ws://localhost:8082'
+    // Replace with your laptop's actual IP address on your local network
+    // You can find this by running 'ipconfig' (Windows) or 'ifconfig' (Mac/Linux)
+    const LAPTOP_IP = '192.168.1.100' // Replace with your actual IP
+    return `ws://${LAPTOP_IP}:8082`
   }
 
   /* ---------- shared auth state ---------- */
