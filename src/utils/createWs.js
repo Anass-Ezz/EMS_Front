@@ -18,13 +18,8 @@ export function createWs(router) {
     
     // Check if we're in WebContainer environment
     if (hostname.includes('webcontainer-api.io')) {
-      // Extract the base part and replace port for WebSocket
-      const parts = hostname.split('--')
-      if (parts.length >= 3) {
-        // Replace the port (middle part) with 8082
-        parts[1] = '8082'
-        return `ws://${parts.join('--')}`
-      }
+      // In WebContainer, use localhost directly for internal service communication
+      return 'ws://localhost:8082'
     }
     
     // Fallback to localhost for local development
