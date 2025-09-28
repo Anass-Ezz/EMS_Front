@@ -280,38 +280,72 @@ function processHistoricData(historic, channels) {
     consumptionValues: consumptionValues?.length
   })
 
-  // Find the latest valid values (go backwards from the end)
+  // Calculate daily consumption first (difference between midnight and current)
+  const nowMs = Date.now()
+  const midnight = new Date()
+  midnight.setHours(0, 0, 0, 0)
+  const midnightMs = midnight.getTime()
+
+  const validIndices = []
+  for (let i = 0; i < timestamps.length; i++) {
+    const t = new Date(timestamps[i]).getTime()
+    if (t >= midnightMs && t <= nowMs) {
+      validIndices.push(i)
+    }
+  }
+
+  // Calculate Consumption Today - Proper Algorithm (like electricity meter)
+  if (Array.isArray(consumptionValues) && consumptionValues.length === timestamps.length && validIndices.length > 0) {
+    // Get midnight value (first valid reading of today)
+    const midnightIndex = validIndices[0]
+    const midnightConsumptionValue = consumptionValues[midnightIndex]
+    
+    // Get current/latest value (last valid reading)
+    const currentIndex = validIndices[validIndices.length - 1]
+    const currentConsumptionValue = consumptionValues[currentIndex]
+    
+    console.log('=== GAS CONSUMPTION TODAY CALCULATION ===')
+    console.log('Midnight timestamp:', timestamps[midnightIndex])
+    console.log('Midnight consumption value (raw):', midnightConsumptionValue)
+    console.log('Current timestamp:', timestamps[currentIndex])
+    console.log('Current consumption value (raw):', currentConsumptionValue)
+    
+    if (midnightConsumptionValue != null && currentConsumptionValue != null && 
+        Number.isFinite(midnightConsumptionValue) && Number.isFinite(currentConsumptionValue)) {
+      
+      const consumptionTodayRaw = currentConsumptionValue - midnightConsumptionValue
+      consumptionToday.value = Math.max(0, consumptionTodayRaw / 1000) // Scale: grams ÷ 1000 = kg
+      console.log('Gas consumed today (raw grams):', consumptionTodayRaw)
+      console.log('Gas consumed today (scaled to kg):', consumptionToday.value)
+      console.log('========================================')
+    }
+  }
+
+  // Find the latest valid values for real-time display (go backwards from the end)
   for (let i = timestamps.length - 1; i >= 0; i--) {
-    // Set flow rate if not already set and value is valid
+    // Set flow rate if not already set and value is valid (scale: g/s ÷ 1000 = kg/s)
     if (flowRate.value === null && flowValues?.[i] != null && Number.isFinite(flowValues[i])) {
-      flowRate.value = flowValues[i]
-      console.log('Set flowRate.value to:', flowRate.value)
+      flowRate.value = flowValues[i] / 1000
+      console.log('Set flowRate.value to:', flowRate.value, '(raw:', flowValues[i], ')')
     }
 
-    // Set temperature if not already set and value is valid
+    // Set temperature if not already set and value is valid (scale: deci-°C ÷ 10 = °C)
     if (temperature.value === null && temperatureValues?.[i] != null && Number.isFinite(temperatureValues[i])) {
-      temperature.value = temperatureValues[i]
-      console.log('Set temperature.value to:', temperature.value)
+      temperature.value = temperatureValues[i] / 10
+      console.log('Set temperature.value to:', temperature.value, '(raw:', temperatureValues[i], ')')
     }
 
-    // Set pressure if not already set and value is valid
+    // Set pressure if not already set and value is valid (scale: mbar ÷ 1000 = bar)
     if (pressure.value === null && pressureValues?.[i] != null && Number.isFinite(pressureValues[i])) {
-      pressure.value = pressureValues[i]
-      console.log('Set pressure.value to:', pressure.value)
-    }
-
-    // Set consumption today if not already set and value is valid
-    if (consumptionToday.value === null && consumptionValues?.[i] != null && Number.isFinite(consumptionValues[i])) {
-      consumptionToday.value = consumptionValues[i]
-      console.log('Set consumptionToday.value to:', consumptionToday.value)
+      pressure.value = pressureValues[i] / 1000
+      console.log('Set pressure.value to:', pressure.value, '(raw:', pressureValues[i], ')')
     }
 
     // If we have all values, we can break early
     if (
       flowRate.value !== null &&
       temperature.value !== null &&
-      pressure.value !== null &&
-      consumptionToday.value !== null
+      pressure.value !== null
     ) {
       break
     }
@@ -328,17 +362,17 @@ function processHistoricData(historic, channels) {
         for (let i = altValues.length - 1; i >= 0; i--) {
           if (altValues[i] != null && Number.isFinite(altValues[i])) {
             if (flowRate.value === null) {
-              flowRate.value = altValues[i]
-              console.log(`Set flowRate from ${altKey}:`, flowRate.value)
+              flowRate.value = altValues[i] / 1000  // Apply gas flow rate scaling
+              console.log(`Set flowRate from ${altKey}:`, flowRate.value, '(raw:', altValues[i], ')')
             } else if (temperature.value === null) {
-              temperature.value = altValues[i]
-              console.log(`Set temperature from ${altKey}:`, temperature.value)
+              temperature.value = altValues[i] / 10  // Apply gas temperature scaling
+              console.log(`Set temperature from ${altKey}:`, temperature.value, '(raw:', altValues[i], ')')
             } else if (pressure.value === null) {
-              pressure.value = altValues[i]
-              console.log(`Set pressure from ${altKey}:`, pressure.value)
+              pressure.value = altValues[i] / 1000  // Apply gas pressure scaling
+              console.log(`Set pressure from ${altKey}:`, pressure.value, '(raw:', altValues[i], ')')
             } else if (consumptionToday.value === null) {
-              consumptionToday.value = altValues[i]
-              console.log(`Set consumption from ${altKey}:`, consumptionToday.value)
+              consumptionToday.value = altValues[i] / 1000  // Apply gas consumption scaling
+              console.log(`Set consumption from ${altKey}:`, consumptionToday.value, '(raw:', altValues[i], ')')
             }
             break
           }

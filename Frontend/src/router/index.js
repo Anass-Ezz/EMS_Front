@@ -52,6 +52,11 @@ const router = createRouter({
                     path: '/support',
                     name: 'support',
                     component: () => import('@/views/pages/SupportPage.vue')
+                },
+                {
+                    path: '/forecasting',
+                    name: 'forecasting',
+                    component: () => import('@/views/pages/ForecastingPage.vue')
                 }, 
                 // {
                 //     path: '/unifilaire',

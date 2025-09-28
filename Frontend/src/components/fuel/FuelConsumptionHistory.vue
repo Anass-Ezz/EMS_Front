@@ -176,12 +176,21 @@ function processChartData(result) {
     }
   })
   
-  // Extract series data
-  const seriesData = props.channels.map(channelId => ({
-    name: channelId,
-    values: result.data[channelId] || [],
-    rawTimestamps: result.timestamps // Store raw timestamps for tooltip
-  }))
+  // Extract series data with scaling applied
+  const seriesData = props.channels.map(channelId => {
+    const rawValues = result.data[channelId] || []
+    // Apply scaling: milliliters ÷ 1000 = L for consumption data
+    const scaledValues = rawValues.map(value => {
+      if (value === null || value === undefined) return value
+      return value / 1000  // Convert milliliters to L
+    })
+    
+    return {
+      name: channelId,
+      values: scaledValues,
+      rawTimestamps: result.timestamps // Store raw timestamps for tooltip
+    }
+  })
   
   chartData.value = {
     timestamps: formattedTimestamps,

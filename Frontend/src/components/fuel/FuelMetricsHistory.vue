@@ -180,12 +180,38 @@ function processChartData(result) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   })
   
-  // Extract series data
-  const seriesData = props.channels.map(channelId => ({
-    name: channelId,
-    values: result.data[channelId] || [],
-    rawTimestamps: result.timestamps // Store raw timestamps for tooltip
-  }))
+  // Extract series data with scaling applied
+  const seriesData = props.channels.map(channelId => {
+    const rawValues = result.data[channelId] || []
+    let scaledValues = rawValues
+    
+    // Apply appropriate scaling based on channel type
+    if (channelId.includes('Temperature')) {
+      // Temperature: deci-°C ÷ 10 = °C
+      scaledValues = rawValues.map(value => {
+        if (value === null || value === undefined) return value
+        return value / 10
+      })
+    } else if (channelId.includes('Pressure')) {
+      // Pressure: mbar ÷ 1000 = bar
+      scaledValues = rawValues.map(value => {
+        if (value === null || value === undefined) return value
+        return value / 1000
+      })
+    } else if (channelId.includes('FlowRate')) {
+      // FlowRate: mL/s ÷ 1000 = L/s
+      scaledValues = rawValues.map(value => {
+        if (value === null || value === undefined) return value
+        return value / 1000
+      })
+    }
+    
+    return {
+      name: channelId,
+      values: scaledValues,
+      rawTimestamps: result.timestamps // Store raw timestamps for tooltip
+    }
+  })
   
   chartData.value = {
     timestamps: formattedTimestamps,

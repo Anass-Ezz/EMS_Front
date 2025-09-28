@@ -12,7 +12,7 @@
     <div class="col-span-10">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-baseline">
-          <i class="bi bi-wind text-orange-500 text-xl mr-3"></i>
+          <i class="bi bi-fire text-orange-500 text-xl mr-3"></i>
           <h1 class="text-xl font-semibold">Gas Meter Selection</h1>
         </div>
         <div class="flex items-center space-x-4">
@@ -109,18 +109,18 @@ const meterInfo = computed(() => {
 
 // Import gas meter images
 const meterImages = {
-  'ION9000.png': new URL('@/assets/images/ION9000.png', import.meta.url).href
+  'POWERKO.png': new URL('@/assets/images/POWERKO.png', import.meta.url).href
 }
 
 // Return correct image URL based on meter ID
 const meterImage = computed(() => {
-  return meterImages['ION9000.png'] // All gas meters use ION9000.png
+  return meterImages['POWERKO.png'] // All gas meters use POWERKO.png
 })
 
 // Fallback if image fails
 function fallbackToDefaultImage(e) {
   console.warn(`[GasMeterSelector] Image failed to load:`, e.target.src)
-  e.target.src = meterImages['ION9000.png']
+  e.target.src = meterImages['POWERKO.png']
 }
 
 // Preload images on mount

@@ -108,18 +108,18 @@ const meterInfo = computed(() => {
 
 // Import fuel meter images
 const meterImages = {
-  'UMG_800.png': new URL('@/assets/images/UMG_800.png', import.meta.url).href
+  'SSM.png': new URL('@/assets/images/SSM.png', import.meta.url).href
 }
 
 // Return correct image URL based on meter ID
 const meterImage = computed(() => {
-  return meterImages['UMG_800.png'] // All fuel meters use UMG_800.png
+  return meterImages['SSM.png'] // All fuel meters use SSM.png
 })
 
 // Fallback if image fails
 function fallbackToDefaultImage(e) {
   console.warn(`[FuelMeterSelector] Image failed to load:`, e.target.src)
-  e.target.src = meterImages['UMG_800.png']
+  e.target.src = meterImages['SSM.png']
 }
 
 // Preload images on mount

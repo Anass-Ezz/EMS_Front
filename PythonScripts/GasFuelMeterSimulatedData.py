@@ -22,7 +22,7 @@ Integer encodings:
 Scales (matched to your Vue animation):
   Gas gm0: T 18–28 °C, P 0.20–0.40 bar, Flow 0.009–0.015 kg/s
   Gas gm1: T 18–28 °C, P 0.20–0.40 bar, Flow 0.008–0.012 kg/s
-  Fuel fm0: T 32–40 °C, P 1.5–2.5 bar, Flow 0.10–0.50 L/s
+  Fuel fm0: T 32–40 °C, P 1.5–2.5 bar, Flow 0.008–0.025 L/s (FIXED - realistic for small industrial boiler)
 """
 
 import random
@@ -149,7 +149,7 @@ FUEL_CONFIG = {
         "name": "fuelmeter0",
         "T_min": 32.0, "T_max": 40.0,      # °C
         "P_min": 1.50, "P_max": 2.50,      # bar
-        "F_min": 0.10, "F_max": 0.50,      # L/s
+        "F_min": 0.008, "F_max": 0.025,    # L/s (FIXED: was 0.10–0.50, now realistic 0.008-0.025)
         "night_bias": True,
         "start_consumption_ml": 200 * 1000,  # milliliters
     }
