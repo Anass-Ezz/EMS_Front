@@ -254,7 +254,17 @@ function processHistoricData(historic, channels) {
   const temperatureKey = `${channelPrefix.value}Temperature`
   const pressureKey = `${channelPrefix.value}Pressure`
 
+  // Also try alternative channel names in case the exact names don't match
+  const alternativeKeys = [
+    `${channelPrefix.value}Flow`,
+    `${channelPrefix.value}Temp`,
+    `${channelPrefix.value}Pres`,
+    `${channelPrefix.value}Energy`,
+    `${channelPrefix.value}Power`
+  ]
+
   console.log('Looking for keys:', { consumptionKey, flowKey, temperatureKey, pressureKey })
+  console.log('Also checking alternative keys:', alternativeKeys)
 
   // Get the latest values from the entire dataset (not just today)
   const flowValues = historic.data?.[flowKey]
@@ -303,6 +313,36 @@ function processHistoricData(historic, channels) {
       consumptionToday.value !== null
     ) {
       break
+    }
+  }
+
+  // If we still don't have values, try to find any available data
+  if (flowRate.value === null || temperature.value === null || pressure.value === null || consumptionToday.value === null) {
+    console.log('Some values are still null, trying to find any available data...')
+    
+    // Try alternative channel names
+    for (const altKey of alternativeKeys) {
+      const altValues = historic.data?.[altKey]
+      if (altValues && altValues.length > 0) {
+        for (let i = altValues.length - 1; i >= 0; i--) {
+          if (altValues[i] != null && Number.isFinite(altValues[i])) {
+            if (flowRate.value === null) {
+              flowRate.value = altValues[i]
+              console.log(`Set flowRate from ${altKey}:`, flowRate.value)
+            } else if (temperature.value === null) {
+              temperature.value = altValues[i]
+              console.log(`Set temperature from ${altKey}:`, temperature.value)
+            } else if (pressure.value === null) {
+              pressure.value = altValues[i]
+              console.log(`Set pressure from ${altKey}:`, pressure.value)
+            } else if (consumptionToday.value === null) {
+              consumptionToday.value = altValues[i]
+              console.log(`Set consumption from ${altKey}:`, consumptionToday.value)
+            }
+            break
+          }
+        }
+      }
     }
   }
 
