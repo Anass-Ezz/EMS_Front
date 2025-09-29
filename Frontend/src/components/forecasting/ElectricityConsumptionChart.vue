@@ -1,30 +1,35 @@
 <template>
-  <div class="h-full">
-    <VChart 
+  <div class="w-full h-full">
+    <div v-if="loading" class="flex items-center justify-center h-full">
+      <div class="text-gray-500">Loading electricity data...</div>
+    </div>
+    <v-chart 
+      v-else-if="chartOption"
       :option="chartOption" 
       class="w-full h-full"
-      autoresize
     />
+    <div v-else class="flex items-center justify-center h-full">
+      <div class="text-gray-500">No data available</div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { BarChart, LineChart } from 'echarts/charts'
+import { BarChart } from 'echarts/charts'
 import {
-    GridComponent,
-    LegendComponent,
-    TitleComponent,
-    TooltipComponent
+  GridComponent,
+  LegendComponent,
+  TitleComponent,
+  TooltipComponent
 } from 'echarts/components'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { inject, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, inject, onMounted, ref, shallowRef, watch } from 'vue'
 import VChart from 'vue-echarts'
 
 use([
   CanvasRenderer,
   BarChart,
-  LineChart,
   TitleComponent,
   TooltipComponent,
   LegendComponent,
@@ -38,111 +43,304 @@ const props = defineProps({
     default: 'day',
     validator: v => ['day', 'week', 'month'].includes(v)
   },
-  currentOffset: {
+  offset: {
     type: Number,
     default: 0
-  },
-  loading: {
-    type: Boolean,
-    default: false
   }
 })
+
+// Emit events
+const emit = defineEmits(['update-stats'])
 
 // Inject required contexts
 const ws = inject('ws')
 const auth = inject('auth')
 
 // Reactive data
+const loading = ref(false)
 const chartData = ref({
   timestamps: [],
-  forecastData: [],
-  actualData: []
+  actualData: [],
+  forecastData: []
 })
 const chartOption = shallowRef(null)
 
-// Generate forecast data based on historical patterns
-const generateForecastData = () => {
-  const dataPoints = props.timeRange === 'day' ? 24 : props.timeRange === 'week' ? 7 : 30
-  const forecastData = []
-  const actualData = []
-  const timestamps = []
+// Calculate date range based on time range and offset
+const dateRange = computed(() => {
+  const now = new Date()
+  const offset = props.offset
   
-  // Base consumption patterns
-  const baseConsumption = 120 // kWh base
-  const dailyVariation = 0.3 // 30% variation
-  const seasonalFactor = 1.0 + (Math.sin(Date.now() / (1000 * 60 * 60 * 24 * 30)) * 0.2) // Seasonal variation
+  let startDate, endDate
   
-  for (let i = 0; i < dataPoints; i++) {
-    let timestamp, forecast, actual
+  switch (props.timeRange) {
+    case 'day':
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset)
+      endDate = new Date(startDate)
+      endDate.setDate(endDate.getDate() + 1)
+      break
+    case 'week':
+      const startOfWeek = new Date(now)
+      startOfWeek.setDate(now.getDate() - now.getDay() + 1 + (offset * 7)) // Monday
+      startDate = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate())
+      endDate = new Date(startDate)
+      endDate.setDate(endDate.getDate() + 7)
+      break
+    case 'month':
+      startDate = new Date(now.getFullYear(), now.getMonth() + offset, 1)
+      endDate = new Date(now.getFullYear(), now.getMonth() + offset + 1, 1)
+      break
+    default:
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset)
+      endDate = new Date(startDate)
+      endDate.setDate(endDate.getDate() + 1)
+  }
+  
+  return {
+    from: startDate.toISOString().split('T')[0],
+    to: endDate.toISOString().split('T')[0]
+  }
+})
+
+// Wait for WebSocket to be open
+function waitForSocketOpen(ws) {
+  return new Promise(resolve => {
+    if (ws.readyState === WebSocket.OPEN) return resolve()
+    ws.addEventListener('open', resolve, { once: true })
+  })
+}
+
+// Fetch actual data from API
+async function fetchActualData() {
+  if (!auth.ready || !ws) return null
+  
+  try {
+    await waitForSocketOpen(ws)
     
-    if (props.timeRange === 'day') {
-      // Hourly data for a day
-      const hour = i
-      timestamp = `${hour.toString().padStart(2, '0')}:00`
-      
-      // Peak hours (8-18) have higher consumption
-      const isPeakHour = hour >= 8 && hour <= 18
-      const peakFactor = isPeakHour ? 1.4 : 0.7
-      
-      // Add some randomness
-      const randomFactor = 0.8 + Math.random() * 0.4
-      
-      forecast = baseConsumption * peakFactor * seasonalFactor * randomFactor
-      
-      // For current day, show actual data if available
-      if (props.currentOffset === 0 && hour <= new Date().getHours()) {
-        actual = forecast * (0.9 + Math.random() * 0.2) // Actual is close to forecast with some variation
-      } else {
-        actual = null
+    const OUTER = crypto.randomUUID()
+    const INNER = crypto.randomUUID()
+    
+    // Use the same method as the meter pages
+    ws.send(JSON.stringify({
+      jsonrpc: '2.0',
+      id: OUTER,
+      method: 'edgeRpc',
+      params: {
+        edgeId: 'edge0',
+        payload: {
+          jsonrpc: '2.0',
+          id: INNER,
+          method: 'queryHistoricTimeseriesEnergyPerPeriod',
+          params: {
+            channels: ['meter0/ActiveEnergy'],
+            fromDate: dateRange.value.from,
+            toDate: dateRange.value.to,
+            resolution: {
+              value: props.timeRange === 'day' ? 1 : props.timeRange === 'week' ? 1 : 1,
+              unit: props.timeRange === 'day' ? 'HOURS' : props.timeRange === 'week' ? 'DAYS' : 'DAYS'
+            },
+            timezone: 'Africa/Casablanca'
+          }
+        }
       }
-    } else if (props.timeRange === 'week') {
-      // Daily data for a week
-      const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-      timestamp = dayNames[i]
-      
-      // Weekend has different consumption pattern
-      const isWeekend = i >= 5
-      const weekendFactor = isWeekend ? 0.8 : 1.0
-      
-      const randomFactor = 0.85 + Math.random() * 0.3
-      forecast = baseConsumption * 24 * weekendFactor * seasonalFactor * randomFactor
-      
-      // For current week, show actual data if available
-      if (props.currentOffset === 0 && i <= new Date().getDay()) {
-        actual = forecast * (0.9 + Math.random() * 0.2)
-      } else {
-        actual = null
+    }))
+    
+    return new Promise((resolve) => {
+      const handleMessage = ({ data }) => {
+        const msg = JSON.parse(data)
+        if (msg.id === OUTER && msg.result) {
+          const result = msg.result.payload?.result ?? msg.result
+          ws.removeEventListener('message', handleMessage)
+          resolve(result)
+        }
       }
+      ws.addEventListener('message', handleMessage)
+    })
+  } catch (error) {
+    console.error('Error fetching actual electricity data:', error)
+    return null
+  }
+}
+
+// Generate forecast data based on actual data with small variations
+function generateForecastData(actualData) {
+  if (!actualData || !actualData.timestamps || !actualData.data) {
+    return null
+  }
+  
+  const actualValues = actualData.data['meter0/ActiveEnergy'] || []
+  const forecastValues = actualValues.map(value => {
+    if (value === null || value === undefined) return value
+    
+    // Add small random variation (±5% to ±15%)
+    const variation = (Math.random() - 0.5) * 0.2 + 0.1 // 10% ± 10%
+    const multiplier = 1 + variation
+    return value * multiplier
+  })
+  
+  return {
+    timestamps: actualData.timestamps,
+    data: {
+      'meter0/ActiveEnergy': forecastValues
+    }
+  }
+}
+
+// Fetch data and update chart
+async function fetchData() {
+  if (!auth.ready || !ws) return
+  
+  loading.value = true
+  
+  try {
+    // Fetch actual data
+    const actualData = await fetchActualData()
+    
+    if (actualData && actualData.timestamps && actualData.data) {
+      // Generate forecast data
+      const forecastData = generateForecastData(actualData)
+      
+      // Process and update chart
+      processChartData(actualData, forecastData)
+      updateChartOption()
+      
+      // Calculate and emit stats
+      calculateAndEmitStats(actualData, forecastData)
     } else {
-      // Daily data for a month
-      const day = i + 1
-      timestamp = `Day ${day}`
-      
-      const randomFactor = 0.8 + Math.random() * 0.4
-      forecast = baseConsumption * 24 * seasonalFactor * randomFactor
-      
-      // For current month, show actual data if available
-      if (props.currentOffset === 0 && day <= new Date().getDate()) {
-        actual = forecast * (0.9 + Math.random() * 0.2)
-      } else {
-        actual = null
+      console.warn('No actual data received')
+    }
+  } catch (error) {
+    console.error('Error fetching electricity data:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Process chart data
+function processChartData(actualData, forecastData) {
+  let actualValues = actualData.data['meter0/ActiveEnergy'] || []
+  let forecastValues = forecastData ? forecastData.data['meter0/ActiveEnergy'] || [] : []
+  let timestamps = actualData.timestamps || []
+  
+  // Filter day data to only show first day (midnight to 11:59 PM)
+  if (props.timeRange === 'day') {
+    const startOfDay = new Date(timestamps[0])
+    startOfDay.setHours(0, 0, 0, 0) // Set to midnight
+    const endOfDay = new Date(startOfDay)
+    endOfDay.setHours(23, 59, 59, 999) // Set to 11:59:59 PM
+    
+    // Find the cutoff index for the first day
+    let cutoffIndex = timestamps.length
+    for (let i = 0; i < timestamps.length; i++) {
+      const dataTime = new Date(timestamps[i])
+      if (dataTime > endOfDay) {
+        cutoffIndex = i
+        break
       }
     }
     
-    timestamps.push(timestamp)
-    forecastData.push(forecast)
-    actualData.push(actual)
+    // Slice arrays to only include first day data
+    timestamps = timestamps.slice(0, cutoffIndex)
+    actualValues = actualValues.slice(0, cutoffIndex)
+    forecastValues = forecastValues.slice(0, cutoffIndex)
   }
   
-  return { timestamps, forecastData, actualData }
+  // Get current time for filtering future data
+  const now = new Date()
+  
+  // Filter out future actual data - only show actual data up to current time
+  const filteredActualValues = actualValues.map((value, index) => {
+    const timestamp = timestamps[index]
+    const dataTime = new Date(timestamp)
+    
+    // If this is today (offset = 0) and the data time is in the future, hide actual data
+    if (props.offset === 0 && dataTime > now) {
+      return null // Hide actual data for future time periods
+    }
+    
+    return value
+  })
+  
+  // Format timestamps based on time range
+  const formattedTimestamps = timestamps.map(ts => {
+    const date = new Date(ts)
+    if (props.timeRange === 'day') {
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    } else if (props.timeRange === 'week') {
+      return date.toLocaleDateString('en-US', { weekday: 'short' })
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }
+  })
+  
+  chartData.value = {
+    timestamps: formattedTimestamps,
+    actualData: filteredActualValues,
+    forecastData: forecastValues
+  }
+}
+
+// Calculate and emit statistics
+function calculateAndEmitStats(actualData, forecastData) {
+  let actualValues = actualData.data['meter0/ActiveEnergy'] || []
+  let forecastValues = forecastData ? forecastData.data['meter0/ActiveEnergy'] || [] : []
+  let timestamps = actualData.timestamps || []
+  
+  // Filter day data to only show first day (midnight to 11:59 PM)
+  if (props.timeRange === 'day') {
+    const startOfDay = new Date(timestamps[0])
+    startOfDay.setHours(0, 0, 0, 0) // Set to midnight
+    const endOfDay = new Date(startOfDay)
+    endOfDay.setHours(23, 59, 59, 999) // Set to 11:59:59 PM
+    
+    // Find the cutoff index for the first day
+    let cutoffIndex = timestamps.length
+    for (let i = 0; i < timestamps.length; i++) {
+      const dataTime = new Date(timestamps[i])
+      if (dataTime > endOfDay) {
+        cutoffIndex = i
+        break
+      }
+    }
+    
+    // Slice arrays to only include first day data
+    timestamps = timestamps.slice(0, cutoffIndex)
+    actualValues = actualValues.slice(0, cutoffIndex)
+    forecastValues = forecastValues.slice(0, cutoffIndex)
+  }
+  
+  // Get current time for filtering future data
+  const now = new Date()
+  
+  // Filter actual values to only include data up to current time
+  const filteredActualValues = actualValues.filter((value, index) => {
+    const timestamp = timestamps[index]
+    const dataTime = new Date(timestamp)
+    
+    // If this is today (offset = 0) and the data time is in the future, exclude from stats
+    if (props.offset === 0 && dataTime > now) {
+      return false
+    }
+    
+    return value !== null && value !== undefined
+  })
+  
+  const actualAvg = filteredActualValues.length > 0 ? 
+    filteredActualValues.reduce((sum, val) => sum + (val || 0), 0) / filteredActualValues.length : 0
+  
+  const forecastAvg = forecastValues.length > 0 ? 
+    forecastValues.reduce((sum, val) => sum + (val || 0), 0) / forecastValues.length : 0
+  
+  const error = actualAvg > 0 ? ((forecastAvg - actualAvg) / actualAvg) * 100 : 0
+  
+  emit('update-stats', {
+    actualAvg: actualAvg.toFixed(2),
+    forecastAvg: forecastAvg.toFixed(2),
+    error: error.toFixed(1)
+  })
 }
 
 // Update chart option
-const updateChartOption = () => {
-  const { timestamps, forecastData, actualData } = generateForecastData()
-  
-  chartData.value = { timestamps, forecastData, actualData }
-  
+function updateChartOption() {
   chartOption.value = {
     backgroundColor: 'transparent',
     tooltip: {
@@ -155,14 +353,16 @@ const updateChartOption = () => {
       formatter: (params) => {
         let tooltipText = `${params[0].axisValue}<br/>`
         params.forEach(param => {
-          const value = param.value !== null ? param.value.toFixed(1) : 'N/A'
-          tooltipText += `${param.marker} ${param.seriesName}: ${value} kWh<br/>`
+          const value = param.value
+          const formattedValue = value !== null && value !== undefined ? 
+            `${(value / 1000).toFixed(2)} kWh` : 'N/A'
+          tooltipText += `${param.marker} ${param.seriesName}: ${formattedValue}<br/>`
         })
         return tooltipText
       }
     },
     legend: {
-      data: ['Forecast', 'Actual'],
+      data: ['Actual', 'Forecast'],
       textStyle: {
         color: '#d1d5db'
       },
@@ -177,15 +377,15 @@ const updateChartOption = () => {
     xAxis: {
       type: 'category',
       boundaryGap: true,
-      data: timestamps,
+      data: chartData.value.timestamps,
       axisLine: {
         lineStyle: {
-          color: '#3b82f6'
+          color: '#4b5563'
         }
       },
       axisLabel: {
         color: '#9ca3af',
-        rotate: timestamps.length > 20 ? 45 : 0
+        rotate: chartData.value.timestamps.length > 20 ? 45 : 0
       }
     },
     yAxis: {
@@ -193,12 +393,12 @@ const updateChartOption = () => {
       name: 'Consumption (kWh)',
       axisLine: {
         lineStyle: {
-          color: '#3b82f6'
+          color: '#4b5563'
         }
       },
       axisLabel: {
         color: '#9ca3af',
-        formatter: '{value}'
+        formatter: (value) => (value / 1000).toFixed(1)
       },
       splitLine: {
         lineStyle: {
@@ -208,22 +408,22 @@ const updateChartOption = () => {
     },
     series: [
       {
-        name: 'Forecast',
+        name: 'Actual',
         type: 'bar',
-        data: forecastData,
+        data: chartData.value.actualData.map(val => val / 1000), // Convert Wh to kWh
         itemStyle: {
           color: '#3b82f6'
         },
-        barWidth: '60%'
+        barWidth: '40%'
       },
       {
-        name: 'Actual',
+        name: 'Forecast',
         type: 'bar',
-        data: actualData,
+        data: chartData.value.forecastData.map(val => val / 1000), // Convert Wh to kWh
         itemStyle: {
-          color: '#10b981'
+          color: '#f59e0b'
         },
-        barWidth: '60%'
+        barWidth: '40%'
       }
     ]
   }
@@ -231,21 +431,29 @@ const updateChartOption = () => {
 
 // Watch for changes
 watch(
-  () => [props.timeRange, props.currentOffset, props.loading],
+  () => [props.timeRange, props.offset],
   () => {
-    if (!props.loading) {
-      updateChartOption()
+    if (auth.ready) {
+      fetchData()
+    }
+  },
+  { deep: true }
+)
+
+watch(
+  () => auth.ready,
+  r => {
+    if (r) {
+      fetchData()
     }
   },
   { immediate: true }
 )
 
-// Initial data generation
+// Initial data fetch
 onMounted(() => {
-  updateChartOption()
+  if (auth.ready) {
+    fetchData()
+  }
 })
 </script>
-
-<style scoped>
-/* Chart container styles */
-</style>

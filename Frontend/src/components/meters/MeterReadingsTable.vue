@@ -11,24 +11,156 @@
 
     <DataTable :value="displayedReadings" class="custom-table">
       <Column field="timestamp" header="Timestamp" class="text-gray-300"></Column>
-      <Column field="vL1" header="V L1" class="text-gray-300"></Column>
-      <Column field="vL2" header="V L2" class="text-gray-300"></Column>
-      <Column field="vL3" header="V L3" class="text-gray-300"></Column>
-      <Column field="aL1" header="A L1" class="text-gray-300"></Column>
-      <Column field="aL2" header="A L2" class="text-gray-300"></Column>
-      <Column field="aL3" header="A L3" class="text-gray-300"></Column>
-      <Column field="kw" header="kW" class="text-gray-300"></Column>
-      <Column field="pf" header="PF" class="text-gray-300"></Column>
-      <Column field="hz" header="Hz" class="text-gray-300"></Column>
+      <Column field="vL1" class="text-gray-300">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>V L1</span>
+            <button 
+              @click="openTrendModal('V L1', 'Line 1 Voltage', `${channelPrefix}VoltageL1`)"
+              class="trend-icon-btn"
+              title="View trend"
+            >
+              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
+            </button>
+          </div>
+        </template>
+      </Column>
+      <Column field="vL2" class="text-gray-300">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>V L2</span>
+            <button 
+              @click="openTrendModal('V L2', 'Line 2 Voltage', `${channelPrefix}VoltageL2`)"
+              class="trend-icon-btn"
+              title="View trend"
+            >
+              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
+            </button>
+          </div>
+        </template>
+      </Column>
+      <Column field="vL3" class="text-gray-300">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>V L3</span>
+            <button 
+              @click="openTrendModal('V L3', 'Line 3 Voltage', `${channelPrefix}VoltageL3`)"
+              class="trend-icon-btn"
+              title="View trend"
+            >
+              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
+            </button>
+          </div>
+        </template>
+      </Column>
+      <Column field="aL1" class="text-gray-300">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>A L1</span>
+            <button 
+              @click="openTrendModal('A L1', 'Line 1 Current', `${channelPrefix}CurrentL1`)"
+              class="trend-icon-btn"
+              title="View trend"
+            >
+              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
+            </button>
+          </div>
+        </template>
+      </Column>
+      <Column field="aL2" class="text-gray-300">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>A L2</span>
+            <button 
+              @click="openTrendModal('A L2', 'Line 2 Current', `${channelPrefix}CurrentL2`)"
+              class="trend-icon-btn"
+              title="View trend"
+            >
+              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
+            </button>
+          </div>
+        </template>
+      </Column>
+      <Column field="aL3" class="text-gray-300">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>A L3</span>
+            <button 
+              @click="openTrendModal('A L3', 'Line 3 Current', `${channelPrefix}CurrentL3`)"
+              class="trend-icon-btn"
+              title="View trend"
+            >
+              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
+            </button>
+          </div>
+        </template>
+      </Column>
+      <Column field="kw" class="text-gray-300">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>kW</span>
+            <button 
+              @click="openTrendModal('kW', 'Active Power', `${channelPrefix}ActivePower`)"
+              class="trend-icon-btn"
+              title="View trend"
+            >
+              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
+            </button>
+          </div>
+        </template>
+      </Column>
+      <Column field="pf" class="text-gray-300">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>PF</span>
+            <button 
+              @click="openTrendModal('PF', 'Power Factor', `${channelPrefix}PowerFactor`)"
+              class="trend-icon-btn"
+              title="View trend"
+            >
+              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
+            </button>
+          </div>
+        </template>
+      </Column>
+      <Column field="hz" class="text-gray-300">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>Hz</span>
+            <button 
+              @click="openTrendModal('Hz', 'Frequency', `${channelPrefix}Frequency`)"
+              class="trend-icon-btn"
+              title="View trend"
+            >
+              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
+            </button>
+          </div>
+        </template>
+      </Column>
     </DataTable>
+    
+    <!-- Trend Modal -->
+    <TrendModal
+      v-model:visible="trendModalVisible"
+      :metric-name="selectedMetric"
+      :metric-description="selectedMetricDescription"
+      :channel="selectedChannel"
+      meter-type="electricity"
+      :meter-index="meterIndex"
+      :ws="ws"
+      :auth="auth"
+      :date-range="dateRange"
+      :resolution="resolution"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, inject, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import DataTable from 'primevue/datatable'
+import TrendModal from '@/components/common/TrendModal.vue'
 import Column from 'primevue/column'
+import DataTable from 'primevue/datatable'
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 /** Waits until the WebSocket is OPEN. */
 function waitForSocketOpen(ws) {
@@ -44,6 +176,8 @@ const emit = defineEmits(['update:latestReading'])
 // Inject
 const ws = inject('ws')
 const auth = inject('auth')
+const dateRange = inject('dateRange')
+const resolution = inject('resolution')
 const route = useRoute()
 
 // Reactive state
@@ -77,6 +211,20 @@ const channelPrefix = computed(() => `meter${meterIndex.value}/`)
 
 // Timer
 let refreshInterval = null
+
+// Trend modal state
+const trendModalVisible = ref(false)
+const selectedMetric = ref('')
+const selectedMetricDescription = ref('')
+const selectedChannel = ref('')
+
+// Function to open trend modal
+function openTrendModal(metric, description, channel) {
+  selectedMetric.value = metric
+  selectedMetricDescription.value = description
+  selectedChannel.value = channel
+  trendModalVisible.value = true
+}
 
 // ✅ Fetch historic data — last 30 minutes to ensure we get ~10 recent samples
 async function fetchHistoricData() {
@@ -270,4 +418,21 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /* Inherits global table styles */
+
+.trend-icon-btn {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.trend-icon-btn:hover {
+  background: rgba(234, 88, 12, 0.1);
+}
+
+.trend-icon-btn i {
+  font-size: 14px;
+}
 </style>

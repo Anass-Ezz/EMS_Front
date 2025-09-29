@@ -10,27 +10,107 @@
 
     <DataTable :value="displayedReadings" class="custom-table">
       <Column field="timestamp" header="Timestamp" class="text-gray-300"></Column>
-      <Column field="flow" header="Flow Rate" class="text-gray-300"></Column>
-      <Column field="temperature" header="Temperature" class="text-gray-300"></Column>
-      <Column field="pressure" header="Pressure" class="text-gray-300"></Column>
-      <Column field="consumption" header="Consumption" class="text-gray-300"></Column>
+      <Column field="flow" class="text-gray-300">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>Flow Rate</span>
+            <button 
+              @click="openTrendModal('Flow Rate', 'Fuel Flow Rate', `${channelPrefix}FlowRate`)"
+              class="trend-icon-btn"
+              title="View trend"
+            >
+              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
+            </button>
+          </div>
+        </template>
+      </Column>
+      <Column field="temperature" class="text-gray-300">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>Temperature</span>
+            <button 
+              @click="openTrendModal('Temperature', 'Fuel Temperature', `${channelPrefix}Temperature`)"
+              class="trend-icon-btn"
+              title="View trend"
+            >
+              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
+            </button>
+          </div>
+        </template>
+      </Column>
+      <Column field="pressure" class="text-gray-300">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>Pressure</span>
+            <button 
+              @click="openTrendModal('Pressure', 'Fuel Pressure', `${channelPrefix}Pressure`)"
+              class="trend-icon-btn"
+              title="View trend"
+            >
+              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
+            </button>
+          </div>
+        </template>
+      </Column>
+      <Column field="consumption" class="text-gray-300">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>Consumption</span>
+            <button 
+              @click="openTrendModal('Consumption', 'Fuel Consumption', `${channelPrefix}Consumption`)"
+              class="trend-icon-btn"
+              title="View trend"
+            >
+              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
+            </button>
+          </div>
+        </template>
+      </Column>
     </DataTable>
+    
+    <!-- Trend Modal -->
+    <TrendModal
+      v-model:visible="trendModalVisible"
+      :metric-name="selectedMetric"
+      :metric-description="selectedMetricDescription"
+      :channel="selectedChannel"
+      meter-type="fuel"
+      :meter-index="meterIndex"
+      :ws="ws"
+      :auth="auth"
+      :date-range="dateRange"
+      :resolution="resolution"
+    />
   </div>
 </template>
 
 <script setup>
+import TrendModal from '@/components/common/TrendModal.vue'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+
+/** Waits until the WebSocket is OPEN. */
+function waitForSocketOpen(ws) {
+  return new Promise((resolve) => {
+    if (ws.readyState === WebSocket.OPEN) return resolve()
+    ws.addEventListener('open', resolve, { once: true })
+  })
+}
 
 // Define emit to send latest reading to parent
 const emit = defineEmits(['update:latestReading'])
 
+// Inject
+const ws = inject('ws')
+const auth = inject('auth')
+const dateRange = inject('dateRange')
+const resolution = inject('resolution')
 const route = useRoute()
 
 // Reactive state
-const rawReadings = ref([]) // All generated records
+const rawReadings = ref([]) // All fetched records
 const displayedReadings = computed(() => {
   // Return last 10 records — most recent first
   return rawReadings.value.slice(0, 10)
@@ -46,46 +126,134 @@ const meterIndex = computed(() => {
   return fuelMeterIdToIndex[id] !== undefined ? fuelMeterIdToIndex[id] : 0
 })
 
+const channelPrefix = computed(() => `fuelmeter${meterIndex.value}/`)
+
 // Timer
 let refreshInterval = null
 
-// Generate synthetic fuel meter readings
-function generateFuelMeterReadings() {
+// Trend modal state
+const trendModalVisible = ref(false)
+const selectedMetric = ref('')
+const selectedMetricDescription = ref('')
+const selectedChannel = ref('')
+
+// Function to open trend modal
+function openTrendModal(metric, description, channel) {
+  selectedMetric.value = metric
+  selectedMetricDescription.value = description
+  selectedChannel.value = channel
+  trendModalVisible.value = true
+}
+
+// Fetch historic data — last 30 minutes to ensure we get ~10 recent samples
+async function fetchHistoricData() {
+  if (!ws) return
+
+  await waitForSocketOpen(ws)
+
   const now = new Date()
-  const baseFlow = 0.3 + (Math.random() * 0.2) // 0.3-0.5 L/s (realistic boiler)
-  const baseTemp = 35 + (Math.random() * 5) // 35-40°C (preheated fuel)
-  const basePressure = 2.0 + (Math.random() * 0.5) // 2.0-2.5 bar (realistic boiler pressure)
+  const fromDate = new Date(now.getTime() - 30 * 60 * 1000) // last 30 minutes
 
-  // Add realistic fluctuations
-  const flowVariation = (Math.random() - 0.5) * 0.1 // ±0.05 L/s (realistic for boiler)
-  const tempVariation = (Math.random() - 0.5) * 3 // ±1.5°C
-  const pressureVariation = (Math.random() - 0.5) * 0.1 // ±0.05 bar (realistic for boiler)
+  const OUTER_ID = crypto.randomUUID()
+  const INNER_ID = crypto.randomUUID()
 
-  const flow = Math.max(0.1, Math.min(0.6, baseFlow + flowVariation))
-  const temperature = Math.max(32, Math.min(42, baseTemp + tempVariation))
-  const pressure = Math.max(1.5, Math.min(2.8, basePressure + pressureVariation))
-  
-  // Calculate consumption (simulate hourly consumption)
-  const consumption = flow * 3600 // L/s * s/h = L/h
+  const channels = [
+    `${channelPrefix.value}FlowRate`,
+    `${channelPrefix.value}Temperature`,
+    `${channelPrefix.value}Pressure`,
+    `${channelPrefix.value}Consumption`
+  ]
 
-  const reading = {
-    timestamp: now.toLocaleTimeString([], { hour12: false }),
-    flow: formatValue(flow, 1, 'L/s'),
-    temperature: formatValue(temperature, 1, '°C'),
-    pressure: formatValue(pressure, 1, 'bar'),
-    consumption: formatValue(consumption, 1, 'L/h')
+  ws.send(
+    JSON.stringify({
+      jsonrpc: '2.0',
+      id: OUTER_ID,
+      method: 'edgeRpc',
+      params: {
+        edgeId: 'edge0',
+        payload: {
+          jsonrpc: '2.0',
+          id: INNER_ID,
+          method: 'queryHistoricTimeseriesData',
+          params: {
+            channels,
+            fromDate: fromDate.toISOString().split('T')[0],
+            toDate: now.toISOString().split('T')[0],
+            fromTime: fromDate.toTimeString().split(' ')[0],
+            toTime: now.toTimeString().split(' ')[0],
+            resolution: {
+              value: 1,
+              unit: 'Minutes',
+            },
+            timezone: 'Africa/Casablanca',
+          },
+        },
+      },
+    })
+  )
+
+  const handler = ({ data }) => {
+    const msg = JSON.parse(data)
+    if (msg.id === OUTER_ID && msg.result?.payload?.result) {
+      processHistoricData(msg.result.payload.result, channels)
+      ws.removeEventListener('message', handler)
+    }
   }
 
-  // Add to readings array (most recent first)
-  rawReadings.value.unshift(reading)
+  ws.addEventListener('message', handler, { once: false })
+}
 
-  // Keep only last 20 readings
-  if (rawReadings.value.length > 20) {
-    rawReadings.value = rawReadings.value.slice(0, 20)
+// Process data — take samples from now backward, limit to 10
+function processHistoricData(historic, channels) {
+  const timestamps = historic?.timestamps
+  if (!Array.isArray(timestamps) || timestamps.length === 0) {
+    rawReadings.value = []
+    return
   }
 
-  // Emit the latest reading to parent
-  emit('update:latestReading', reading)
+  const data = historic.data || {}
+  const records = []
+
+  const nowMs = Date.now()
+
+  // Build list of all valid samples
+  for (let i = 0; i < timestamps.length; i++) {
+    const ts = timestamps[i]
+    if (!ts) continue
+
+    const date = new Date(ts)
+    const tsMs = date.getTime()
+
+    // Only include samples from today and not in the future
+    if (tsMs > nowMs) continue
+
+    const formattedTime = date.toLocaleTimeString([], { hour12: false })
+
+    records.push({
+      timestamp: formattedTime,
+      // Apply scaling factors from Python code
+      flow: formatValue((data[`${channelPrefix.value}FlowRate`]?.[i] || 0) / 1000, 1, 'L/s'), // mL/s → L/s
+      temperature: formatValue((data[`${channelPrefix.value}Temperature`]?.[i] || 0) / 10, 1, '°C'), // deci-°C → °C
+      pressure: formatValue((data[`${channelPrefix.value}Pressure`]?.[i] || 0) / 1000, 1, 'bar'), // mbar → bar
+      consumption: formatValue((data[`${channelPrefix.value}Consumption`]?.[i] || 0) / 1000, 1, 'L/h') // mL → L
+    })
+  }
+
+  // Sort by timestamp DESCENDING — newest first
+  records.sort((a, b) => {
+    // Parse time strings back to Date for accurate sorting
+    const timeA = new Date(`1970-01-01T${a.timestamp}`)
+    const timeB = new Date(`1970-01-01T${b.timestamp}`)
+    return timeB - timeA
+  })
+
+  // Take only the 10 most recent
+  rawReadings.value = records.slice(0, 10)
+
+  // EMIT the latest (first) reading to parent
+  if (rawReadings.value.length > 0) {
+    emit('update:latestReading', rawReadings.value[0])
+  }
 }
 
 // Format value helper
@@ -97,12 +265,8 @@ function formatValue(value, decimals = 2, unit = '') {
 // Start auto-refresh
 function startAutoRefresh() {
   if (refreshInterval) clearInterval(refreshInterval)
-  
-  // Generate initial reading
-  generateFuelMeterReadings()
-  
   refreshInterval = setInterval(() => {
-    generateFuelMeterReadings()
+    fetchHistoricData()
   }, 60000) // 1 minute
 }
 
@@ -114,9 +278,32 @@ function stopAutoRefresh() {
   }
 }
 
-// Start on mount
+// Fetch on meter change
+watch(() => route.query.meterId, () => {
+  rawReadings.value = []
+  fetchHistoricData()
+})
+
+// Fetch on mount
 onMounted(() => {
-  startAutoRefresh()
+  if (!ws) return
+
+  if (auth?.ready) {
+    fetchHistoricData()
+    startAutoRefresh()
+  } else {
+    const unwatchAuth = watch(
+      () => auth?.ready,
+      (isReady) => {
+        if (isReady) {
+          fetchHistoricData()
+          startAutoRefresh()
+          unwatchAuth()
+        }
+      },
+      { immediate: true }
+    )
+  }
 })
 
 // Cleanup
@@ -127,4 +314,21 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /* Inherits global table styles */
+
+.trend-icon-btn {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.trend-icon-btn:hover {
+  background: rgba(234, 88, 12, 0.1);
+}
+
+.trend-icon-btn i {
+  font-size: 14px;
+}
 </style>
