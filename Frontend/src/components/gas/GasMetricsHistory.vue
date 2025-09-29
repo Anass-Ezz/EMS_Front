@@ -78,27 +78,32 @@ const resolution = computed(() => resolutionContext.value.value)
 
 // Gas formatting functions
 function formatGasFlowWithUnit(value) {
-  if (value === null || value === undefined) return 'N/A'
+  if (value === null || value === undefined || isNaN(value)) return 'N/A'
   
   const num = parseFloat(value)
+  if (isNaN(num)) return 'N/A'
   
   if (Math.abs(num) < 0.001) {
-    return `${(num * 1000).toFixed(3)} g/s`
+    return `${(num * 1000).toFixed(3)} g/h`
   } else if (Math.abs(num) < 1) {
-    return `${num.toFixed(4)} kg/s`
+    return `${num.toFixed(4)} m³/h`
   } else {
-    return `${num.toFixed(2)} kg/s`
+    return `${num.toFixed(2)} m³/h`
   }
 }
 
 function formatTemperatureWithUnit(value) {
-  if (value === null || value === undefined) return 'N/A'
-  return `${parseFloat(value).toFixed(1)}°C`
+  if (value === null || value === undefined || isNaN(value)) return 'N/A'
+  const num = parseFloat(value)
+  if (isNaN(num)) return 'N/A'
+  return `${num.toFixed(1)}°C`
 }
 
 function formatPressureWithUnit(value) {
-  if (value === null || value === undefined) return 'N/A'
-  return `${parseFloat(value).toFixed(2)} bar`
+  if (value === null || value === undefined || isNaN(value)) return 'N/A'
+  const num = parseFloat(value)
+  if (isNaN(num)) return 'N/A'
+  return `${num.toFixed(2)} bar`
 }
 
 // Wait for WebSocket to be open
@@ -199,10 +204,10 @@ function processChartData(result) {
         return value / 1000
       })
     } else if (channelId.includes('FlowRate')) {
-      // FlowRate: g/s ÷ 1000 = kg/s
+      // FlowRate: (m³/s × 1,000,000) ÷ 1,000,000 × 3600 = m³/h
       scaledValues = rawValues.map(value => {
         if (value === null || value === undefined) return value
-        return value / 1000
+        return (value / 1000000) * 3600
       })
     }
     
@@ -254,7 +259,7 @@ function updateChartOption() {
         let tooltipText = `${formattedDate}<br/>`
         params.forEach(param => {
           let formattedValue = 'N/A'
-          if (param.seriesName.includes('FlowRate')) {
+          if (param.seriesName.includes('Flow Rate')) {
             formattedValue = formatGasFlowWithUnit(param.value)
           } else if (param.seriesName.includes('Temperature')) {
             formattedValue = formatTemperatureWithUnit(param.value)
@@ -297,64 +302,42 @@ function updateChartOption() {
         color: '#9ca3af'
       }
     },
-    yAxis: [
-      {
-        type: 'value',
-        name: 'Flow Rate (kg/s)',
-        position: 'left',
-        axisLine: {
-          lineStyle: {
-            color: '#3b82f6'
-          }
-        },
-        axisLabel: {
-          color: '#9ca3af',
-          formatter: '{value}'
-        },
-        splitLine: {
-          lineStyle: {
-            color: '#374151'
-          }
+    yAxis: {
+      type: 'value',
+      name: 'Values',
+      axisLine: {
+        lineStyle: {
+          color: '#4b5563'
         }
       },
-      {
-        type: 'value',
-        name: 'Temperature (°C)',
-        position: 'right',
-        axisLine: {
-          lineStyle: {
-            color: '#ef4444'
-          }
-        },
-        axisLabel: {
-          color: '#9ca3af',
-          formatter: '{value}°C'
+      axisLabel: {
+        color: '#9ca3af',
+        formatter: '{value}'
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#374151'
         }
       }
-    ],
+    },
     series: chartData.value.series.map((series, index) => {
       const isFlowRate = series.name.includes('FlowRate')
       const isTemperature = series.name.includes('Temperature')
       const isPressure = series.name.includes('Pressure')
       
-      let yAxisIndex = 0 // Default to left axis
       let color = '#22c55e' // Default green for pressure
       
       if (isFlowRate) {
-        yAxisIndex = 0
         color = '#3b82f6' // Blue
       } else if (isTemperature) {
-        yAxisIndex = 1
         color = '#ef4444' // Red
       } else if (isPressure) {
-        yAxisIndex = 0
         color = '#22c55e' // Green
       }
       
       return {
-        name: isFlowRate ? 'Flow Rate' : isTemperature ? 'Temperature' : isPressure ? 'Pressure' : series.name,
+        name: isFlowRate ? 'Flow Rate (m³/h)' : isTemperature ? 'Temperature (°C)' : isPressure ? 'Pressure (bar)' : series.name,
         type: 'line',
-        yAxisIndex: yAxisIndex,
         data: series.values,
         smooth: true,
         lineStyle: {

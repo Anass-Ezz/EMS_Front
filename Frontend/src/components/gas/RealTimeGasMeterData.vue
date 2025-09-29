@@ -65,9 +65,9 @@ const placeholder = '---'
 function formatFlowRate(value) {
   if (value === null || typeof value === 'undefined') return { value: placeholder, unit: '' }
   const absValue = Math.abs(value)
-  if (absValue < 0.001) return { value: (value * 1000).toFixed(3), unit: 'g/s' }
-  if (absValue < 1) return { value: value.toFixed(4), unit: 'kg/s' }
-  return { value: value.toFixed(2), unit: 'kg/s' }
+  if (absValue < 0.001) return { value: (value * 1000).toFixed(3), unit: 'g/h' }
+  if (absValue < 1) return { value: value.toFixed(4), unit: 'm³/h' }
+  return { value: value.toFixed(2), unit: 'm³/h' }
 }
 
 function formatTemperature(value) {
@@ -83,9 +83,9 @@ function formatPressure(value) {
 function formatConsumption(value) {
   if (value === null || typeof value === 'undefined') return { value: placeholder, unit: '' }
   const absValue = Math.abs(value)
-  if (absValue < 1) return { value: value.toFixed(3), unit: 'kg' }
-  if (absValue < 1000) return { value: value.toFixed(2), unit: 'kg' }
-  return { value: (value / 1000).toFixed(2), unit: 't' }
+  if (absValue < 1) return { value: value.toFixed(3), unit: 'm³' }
+  if (absValue < 1000) return { value: value.toFixed(2), unit: 'm³' }
+  return { value: (value / 1000).toFixed(2), unit: 'k m³' }
 }
 
 function formatCurrencyMud(value) {
@@ -99,8 +99,8 @@ const temperature = ref(null)
 const pressure = ref(null)
 const consumptionToday = ref(null)
 
-// Gas tariff (MAD per kg)
-const GAS_TARIFF_PER_KG = 2.5
+// Gas tariff (MAD per m³)
+const GAS_TARIFF_PER_M3 = 2.5
 
 // Display values + units (computed separately for styling)
 const displayFlowRate = computed(() => {
@@ -151,7 +151,7 @@ const unitCostToday = computed(() => {
 // Cost calculation
 const costToday = computed(() => {
   if (consumptionToday.value == null) return null
-  return consumptionToday.value * GAS_TARIFF_PER_KG
+  return consumptionToday.value * GAS_TARIFF_PER_M3 * 100
 })
 
 // Inject
@@ -314,18 +314,18 @@ function processHistoricData(historic, channels) {
         Number.isFinite(midnightConsumptionValue) && Number.isFinite(currentConsumptionValue)) {
       
       const consumptionTodayRaw = currentConsumptionValue - midnightConsumptionValue
-      consumptionToday.value = Math.max(0, consumptionTodayRaw / 1000) // Scale: grams ÷ 1000 = kg
-      console.log('Gas consumed today (raw grams):', consumptionTodayRaw)
-      console.log('Gas consumed today (scaled to kg):', consumptionToday.value)
+      consumptionToday.value = Math.max(0, consumptionTodayRaw / 1000000) // Scale: m³ × 1,000,000 ÷ 1,000,000 = m³
+      console.log('Gas consumed today (raw m³ × 1,000,000):', consumptionTodayRaw)
+      console.log('Gas consumed today (scaled to m³):', consumptionToday.value)
       console.log('========================================')
     }
   }
 
   // Find the latest valid values for real-time display (go backwards from the end)
   for (let i = timestamps.length - 1; i >= 0; i--) {
-    // Set flow rate if not already set and value is valid (scale: g/s ÷ 1000 = kg/s)
+    // Set flow rate if not already set and value is valid (scale: m³/s × 1,000,000 ÷ 1,000,000 × 3600 = m³/h)
     if (flowRate.value === null && flowValues?.[i] != null && Number.isFinite(flowValues[i])) {
-      flowRate.value = flowValues[i] / 1000
+      flowRate.value = (flowValues[i] / 1000000) * 3600
       console.log('Set flowRate.value to:', flowRate.value, '(raw:', flowValues[i], ')')
     }
 

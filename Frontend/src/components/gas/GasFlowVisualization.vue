@@ -14,7 +14,7 @@
       <div class="absolute inset-0 flex items-center justify-center">
         <div class="text-center">
           <div class="text-2xl font-bold text-blue-500">{{ flow.toFixed(4) }}</div>
-          <div class="text-sm text-gray-400">kg/s</div>
+          <div class="text-sm text-gray-400">m³/h</div>
         </div>
       </div>
     </div>

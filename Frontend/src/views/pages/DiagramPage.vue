@@ -78,28 +78,28 @@ const meterPowerValues = ref({
   'sm-b-4': 120,  // Near 150kW max (Solar Inverter)
 })
 
-// Gas meter data (gm-0 and gm-1) - flow in kg/s
+// Gas meter data (gm-0 and gm-1) - flow in m³/s
 const gasMeterData = ref({
   'gm-0': {
     temperature: 22,    // °C - ambient temperature
     pressure: 0.3,      // bar - low pressure from tank
-    flow: 0.012,        // kg/s - for industrial oven (natural gas density ~0.8 kg/m³)
+    flow: 0.012,        // m³/s - for industrial oven (natural gas density ~0.717 kg/m³)
     state: false        // connection state
   },
   'gm-1': {
     temperature: 22,    // °C - ambient temperature
     pressure: 0.3,      // bar - low pressure from tank
-    flow: 0.010,        // kg/s - for industrial oven
+    flow: 0.010,        // m³/s - for industrial oven
     state: false        // connection state
   }
 })
 
-// Fuel meter data (fm-0) - flow in L/s
+// Fuel meter data (fm-0) - flow in kg/s
 const fuelMeterData = ref({
   'fm-0': {
     temperature: 35,    // °C - preheated fuel
     pressure: 2.0,      // bar - realistic boiler pressure
-    flow: 0.3,          // L/s - realistic boiler consumption
+    flow: 0.3,          // kg/s - realistic boiler consumption
     state: false        // connection state
   }
 })
@@ -141,6 +141,10 @@ const processedSvg = computed(() => {
   return svgContent
     .replace(/<g id="node-a"/g, '<g id="node-a" data-node="A" style="cursor: pointer"')
     .replace(/<g id="node-b"/g, '<g id="node-b" data-node="B" style="cursor: pointer"')
+    .replace(/<g id="gm-0"/g, '<g id="gm-0" style="cursor: pointer"')
+    .replace(/<g id="gm-1"/g, '<g id="gm-1" style="cursor: pointer"')
+    .replace(/<g id="fm-0"/g, '<g id="fm-0" style="cursor: pointer"')
+    .replace(/<g id="pv-0"/g, '<g id="pv-0" style="cursor: pointer"')
 })
 
 // --- Click Handling ---
@@ -198,6 +202,21 @@ const handleDiagramClick = (event) => {
     })
     return;
   }
+  
+  // Handle PV meter clicks
+  const pvElement = event.target.closest('#pv-0')
+  if (pvElement) {
+    const pvId = pvElement.id
+    // Navigate to PV page
+    router.push({
+      path: '/pv',
+      query: { 
+        meterId: pvId,
+        meterName: 'Solar PV System'
+      }
+    })
+    return;
+  }
 }
 
 // --- Panning/Zooming ---
@@ -231,7 +250,7 @@ const handleZoom = (event) => {
 }
 
 const startDrag = (event) => {
-  if (event.target.closest('[data-node]') || event.target.closest('[id^="sm-"]') || event.target.closest('[id^="gm-"]') || event.target.closest('[id^="fm-"]')) {
+  if (event.target.closest('[data-node]') || event.target.closest('[id^="sm-"]') || event.target.closest('[id^="gm-"]') || event.target.closest('[id^="fm-"]') || event.target.closest('#pv-0')) {
     handleDiagramClick(event)
     return
   }
@@ -379,7 +398,7 @@ function fluctuateGasFuelValue(currentValue, minValue, maxValue, variation = 0.0
 
 // Animate gas and fuel meter values with realistic fluctuations
 const animateGasFuelValues = () => {
-  // Gas Meter 0 (gm-0) - flow in kg/s
+  // Gas Meter 0 (gm-0) - flow in m³/s
   gasMeterData.value['gm-0'].temperature = fluctuateGasFuelValue(
     gasMeterData.value['gm-0'].temperature, 18, 28, 0.02
   ) // ±2% variation, 18-28°C
@@ -389,10 +408,10 @@ const animateGasFuelValues = () => {
   ) // ±3% variation, 0.2-0.4 bar
   
   gasMeterData.value['gm-0'].flow = fluctuateGasFuelValue(
-    gasMeterData.value['gm-0'].flow, 0.009, 0.015, 0.04
-  ) // ±4% variation, 0.009-0.015 kg/s
+    gasMeterData.value['gm-0'].flow, 0.012, 0.021, 0.04
+  ) // ±4% variation, 0.012-0.021 m³/s (converted from kg/s using 0.717 kg/m³ density)
 
-  // Gas Meter 1 (gm-1) - flow in kg/s
+  // Gas Meter 1 (gm-1) - flow in m³/s
   gasMeterData.value['gm-1'].temperature = fluctuateGasFuelValue(
     gasMeterData.value['gm-1'].temperature, 18, 28, 0.02
   ) // ±2% variation, 18-28°C
@@ -402,10 +421,10 @@ const animateGasFuelValues = () => {
   ) // ±3% variation, 0.2-0.4 bar
   
   gasMeterData.value['gm-1'].flow = fluctuateGasFuelValue(
-    gasMeterData.value['gm-1'].flow, 0.008, 0.012, 0.04
-  ) // ±4% variation, 0.008-0.012 kg/s
+    gasMeterData.value['gm-1'].flow, 0.011, 0.017, 0.04
+  ) // ±4% variation, 0.011-0.017 m³/s (converted from kg/s using 0.717 kg/m³ density)
 
-  // Fuel Meter (fm-0) - flow in L/s
+  // Fuel Meter (fm-0) - flow in kg/s
   fuelMeterData.value['fm-0'].temperature = fluctuateGasFuelValue(
     fuelMeterData.value['fm-0'].temperature, 32, 40, 0.03
   ) // ±3% variation, 32-40°C (preheated)
@@ -415,8 +434,8 @@ const animateGasFuelValues = () => {
   ) // ±5% variation, 1.5-2.5 bar (realistic boiler pressure)
   
   fuelMeterData.value['fm-0'].flow = fluctuateGasFuelValue(
-    fuelMeterData.value['fm-0'].flow, 0.1, 0.5, 0.03
-  ) // ±3% variation, 0.1-0.5 L/s (realistic boiler consumption)
+    fuelMeterData.value['fm-0'].flow, 0.085, 0.425, 0.03
+  ) // ±3% variation, 0.085-0.425 kg/s (converted from L/s using 0.85 kg/L density)
 }
 
 // Computed properties for formatted gas/fuel display
@@ -425,7 +444,7 @@ const gasMeterDisplay = computed(() => {
   for (const [id, data] of Object.entries(gasMeterData.value)) {
     display[`${id}-tmp`] = `${data.temperature.toFixed(1)} °C`
     display[`${id}-bar`] = `${data.pressure.toFixed(2)} bar`
-    display[`${id}-flow`] = `${data.flow.toFixed(4)} kg/s` // 4 decimal places for kg/s
+    display[`${id}-flow`] = `${data.flow.toFixed(4)} m³/s` // 4 decimal places for m³/s
     display[`${id}-state`] = data.state
   }
   return display
@@ -436,7 +455,7 @@ const fuelMeterDisplay = computed(() => {
   for (const [id, data] of Object.entries(fuelMeterData.value)) {
     display[`${id}-tmp`] = `${data.temperature.toFixed(1)} °C`
     display[`${id}-bar`] = `${data.pressure.toFixed(2)} bar`
-    display[`${id}-flow`] = `${data.flow.toFixed(1)} L/s`
+    display[`${id}-flow`] = `${data.flow.toFixed(1)} kg/s`
     display[`${id}-state`] = data.state
   }
   return display

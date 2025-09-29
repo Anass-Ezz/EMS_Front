@@ -38,6 +38,7 @@ const props = defineProps({
   isLegend: { type: Boolean, required: true },
   color: { type: Number, default: -1 },
   scaleConfig: { type: Array, default: () => [] },
+  unitConfig: { type: Array, default: () => [] },
 });
 
 const chartOption = ref({});
@@ -59,6 +60,12 @@ watch(
     const sfMap = Object.fromEntries(
       props.scaleConfig.map(c =>
         typeof c === 'string' ? [c, 1] : [c.channel, c.sf ?? 1]
+      )
+    );
+    
+    const unitMap = Object.fromEntries(
+      props.unitConfig.map(c =>
+        typeof c === 'string' ? [c, ''] : [c.channel, c.unit ?? '']
       )
     );
 
@@ -108,6 +115,18 @@ watch(
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'cross', label: { backgroundColor: '#6a7985' } },
+        formatter: (params) => {
+          if (!params || params.length === 0) return '';
+          
+          let tooltipText = `${params[0].axisValueLabel}<br/>`;
+          params.forEach(param => {
+            const unit = unitMap[param.seriesName] || '';
+            const value = param.value[1];
+            const formattedValue = value != null ? value.toFixed(2) : 'N/A';
+            tooltipText += `${param.marker}${param.seriesName}: ${formattedValue} ${unit}<br/>`;
+          });
+          return tooltipText;
+        }
       },
       legend: {
         show: props.isLegend, data: Object.keys(data), bottom: 0,
@@ -130,7 +149,15 @@ watch(
       },
       yAxis: {
         type: 'value',
-        axisLabel: { color: textColor },
+        axisLabel: { 
+          color: textColor,
+          formatter: (value) => {
+            // Get the unit for the first series (assuming all series in a chart have the same unit)
+            const firstChannel = Object.keys(data)[0];
+            const unit = unitMap[firstChannel] || '';
+            return unit ? `${value} ${unit}` : value;
+          }
+        },
         splitLine: { lineStyle: { color: gridColor, type: 'dashed' } },
       },
       dataZoom: [

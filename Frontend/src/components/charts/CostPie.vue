@@ -1,9 +1,9 @@
 <template>
   <div class="w-full rounded-lg shadow-lg px-2">
-    <!-- Custom HTML legend -->
-    <div class="flex flex-col items-start gap-2 pt-4">
+    <!-- Compact legend with better spacing -->
+    <div class="flex flex-col items-start gap-1 pt-2">
       <!-- Electricity -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 w-full">
         <svg
           :width="iconSize"
           :height="iconSize"
@@ -14,7 +14,7 @@
           <path :d="pathSymbols.electricity" :fill="COLORS.electricity"></path>
         </svg>
         <span
-          class="text-xl font-semibold"
+          class="text-lg font-semibold"
           :style="{ color: textColors.electricity }"
         >
           {{ fmtMAD(electricityCost) }}
@@ -22,7 +22,7 @@
       </div>
 
       <!-- Gas -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 w-full">
         <svg
           :width="iconSize"
           :height="iconSize"
@@ -33,7 +33,7 @@
           <path :d="pathSymbols.gas" :fill="COLORS.gas"></path>
         </svg>
         <span
-          class="text-xl font-semibold"
+          class="text-lg font-semibold"
           :style="{ color: textColors.gas }"
         >
           {{ fmtMAD(gasCost) }}
@@ -41,7 +41,7 @@
       </div>
 
       <!-- Fuel -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 w-full">
         <svg
           :width="iconSize"
           :height="iconSize"
@@ -52,10 +52,21 @@
           <path :d="pathSymbols.fuel" :fill="COLORS.fuel"></path>
         </svg>
         <span
-          class="text-xl font-semibold"
+          class="text-lg font-semibold"
           :style="{ color: textColors.fuel }"
         >
           {{ fmtMAD(fuelCost) }}
+        </span>
+      </div>
+
+      <!-- Total Cost - Compact -->
+      <div class="flex items-center gap-2 w-full mt-2 pt-2 border-t border-gray-600">
+        <span class="text-xl font-bold text-gray-400">
+
+          Total
+        </span>
+        <span class="text-xl font-bold text-gray-400">
+          {{ fmtMAD(totalCost) }}
         </span>
       </div>
     </div>
@@ -234,6 +245,7 @@ const costs = computed(() => {
 const electricityCost = computed(() => costs.value.electricityCost)
 const gasCost = computed(() => costs.value.gasCost)
 const fuelCost = computed(() => costs.value.fuelCost)
+const totalCost = computed(() => electricityCost.value + gasCost.value + fuelCost.value)
 
 const fmtMAD = (v) =>
   new Intl.NumberFormat('fr-MA', {
@@ -264,29 +276,46 @@ const buildOption = () => ({
   backgroundColor: 'transparent',
   tooltip: {
     trigger: 'item',
-    backgroundColor: 'rgba(17,24,39,0.95)',
-    borderColor: '#334155',
-    textStyle: { color: '#f8fafc' },
+    backgroundColor: 'rgba(15,23,42,0.95)',
+    borderColor: '#475569',
+    borderWidth: 1,
+    borderRadius: 8,
+    textStyle: { 
+      color: '#f1f5f9',
+      fontSize: 14
+    },
     formatter: (p) =>
-      `${p.name}<br/><b>${fmtMAD(p.value)}</b> (${p.percent?.toFixed(1)}%)`
+      `<div class="p-2">
+        <div class="font-semibold text-lg">${p.name}</div>
+        <div class="text-blue-300 font-bold text-xl">${fmtMAD(p.value)}</div>
+        <div class="text-slate-400 text-sm">${p.percent?.toFixed(1)}% of total</div>
+      </div>`
   },
   series: [
     {
       name: 'Cost',
       type: 'pie',
-      radius: ['40%', '70%'],
+      radius: ['45%', '75%'],
       center: ['50%', '50%'],
       avoidLabelOverlap: false,
-      padAngle: 1,
+      padAngle: 2,
       itemStyle: {
-        borderRadius: 5,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.35)'
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: 'rgba(15,23,42,0.8)',
+        shadowBlur: 10,
+        shadowColor: 'rgba(0,0,0,0.3)'
       },
-      label: { show: false },
+      label: { 
+        show: false 
+      },
       emphasis: {
         scale: true,
-        scaleSize: 6
+        scaleSize: 8,
+        itemStyle: {
+          shadowBlur: 20,
+          shadowColor: 'rgba(0,0,0,0.5)'
+        }
       },
       labelLine: { show: false },
       data: data.value

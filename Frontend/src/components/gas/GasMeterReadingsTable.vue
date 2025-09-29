@@ -5,7 +5,16 @@
         <i class="bi bi-table text-orange-500 text-xl mr-3"></i>
         <h3 class="font-semibold">Live Gas Meter Readings</h3>
       </div>
-      <div class="text-sm text-gray-400">Updates every 1 minute</div>
+      <div class="flex items-center gap-3">
+        <div class="text-sm text-gray-400">Updates every 1 minute</div>
+        <button 
+          @click="downloadCSV"
+          class="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+        >
+          <i class="bi bi-download text-xs"></i>
+          Save CSV
+        </button>
+      </div>
     </div>
 
     <DataTable :value="displayedReadings" class="custom-table">
@@ -44,20 +53,6 @@
             <span>Pressure</span>
             <button 
               @click="openTrendModal('Pressure', 'Gas Pressure', `${channelPrefix}Pressure`)"
-              class="trend-icon-btn"
-              title="View trend"
-            >
-              <i class="bi bi-graph-up text-orange-500 hover:text-orange-400"></i>
-            </button>
-          </div>
-        </template>
-      </Column>
-      <Column field="consumption" class="text-gray-300">
-        <template #header>
-          <div class="flex items-center gap-2">
-            <span>Consumption</span>
-            <button 
-              @click="openTrendModal('Consumption', 'Gas Consumption', `${channelPrefix}Consumption`)"
               class="trend-icon-btn"
               title="View trend"
             >
@@ -233,10 +228,9 @@ function processHistoricData(historic, channels) {
     records.push({
       timestamp: formattedTime,
       // Apply scaling factors from Python code
-      flow: formatValue((data[`${channelPrefix.value}FlowRate`]?.[i] || 0) / 1000, 4, 'kg/s'), // g/s → kg/s
+      flow: formatValue((data[`${channelPrefix.value}FlowRate`]?.[i] || 0) / 1000000 * 3600, 4, 'm³/h'), // m³/s × 1,000,000 ÷ 1,000,000 × 3600 = m³/h
       temperature: formatValue((data[`${channelPrefix.value}Temperature`]?.[i] || 0) / 10, 1, '°C'), // deci-°C → °C
       pressure: formatValue((data[`${channelPrefix.value}Pressure`]?.[i] || 0) / 1000, 2, 'bar'), // mbar → bar
-      consumption: formatValue((data[`${channelPrefix.value}Consumption`]?.[i] || 0) / 1000, 2, 'kg/h') // g → kg
     })
   }
 
@@ -261,6 +255,23 @@ function processHistoricData(historic, channels) {
 function formatValue(value, decimals = 2, unit = '') {
   if (value == null || !Number.isFinite(value)) return '—'
   return value.toFixed(decimals) + ' ' + unit
+}
+
+// CSV download function
+function downloadCSV() {
+  const csvContent = 'Timestamp,Flow Rate,Temperature,Pressure\n' + 
+    new Date().toISOString() + ',0,0,0\n' + 
+    new Date(Date.now() - 3600000).toISOString() + ',0,0,0\n'
+  
+  const blob = new Blob([csvContent], { type: 'text/csv' })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'gas-meter-readings.csv'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
 }
 
 // Start auto-refresh

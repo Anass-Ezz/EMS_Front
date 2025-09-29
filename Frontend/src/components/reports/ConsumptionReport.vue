@@ -96,7 +96,6 @@
               <th class="py-2 pr-4 text-right">Peak kW</th>
               <th class="py-2 pr-4 text-right">kWh</th>
               <th class="py-2 pr-4 text-right">% of Elec</th>
-              <th class="py-2 pr-4 text-right">Uptime %</th>
             </tr>
           </thead>
           <tbody>
@@ -106,7 +105,6 @@
               <td class="py-2 pr-4 text-right">{{ fmt2(row.peakKW) }}</td>
               <td class="py-2 pr-4 text-right">{{ fmt2(row.kWh) }}</td>
               <td class="py-2 pr-4 text-right">{{ fmtPct(row.share) }}</td>
-              <td class="py-2 pr-4 text-right">{{ fmtPct(row.uptime) }}</td>
             </tr>
           </tbody>
         </table>
@@ -363,7 +361,7 @@ function computeAggregations() {
   
   tableMeters.value = NON_PV_METERS
     .filter(id => meterTotals[id])
-    .map(id => ({ id, name: METER_CONFIG[id].name || id, ...meterTotals[id], share: totalElecKWh > 0 ? meterTotals[id].kWh / totalElecKWh : 0, uptime: 0.99 }))
+    .map(id => ({ id, name: METER_CONFIG[id].name || id, ...meterTotals[id], share: totalElecKWh > 0 ? meterTotals[id].kWh / totalElecKWh : 0 }))
     .sort((a,b)=> b.kWh - a.kWh)
   kpis.value = { totalElecKWh, peakKW, peakAt, gasKWh, fuelKWh, pvKWh, loadFactor }
 }
@@ -518,7 +516,14 @@ function buildCharts() {
   const sumKWh = ids => ids.reduce((t, id) => t + (kpis.value[id]?.kWh || tableMeters.value.find(m => m.id === id)?.kWh || 0), 0)
   chartBreakdown.value = {
     tooltip: { trigger: 'item', formatter: p => `${p.marker} ${p.name}: ${fmt2(p.value)} kWh (${p.percent.toFixed(2)}%)` },
-    legend: { bottom: 0, textStyle: { color: '#e5e7eb' }, type: 'scroll' },
+    legend: { 
+      bottom: 0, 
+      textStyle: { color: '#e5e7eb', fontSize: 10 }, 
+      type: 'scroll',
+      itemWidth: 12,
+      itemHeight: 8,
+      itemGap: 8
+    },
     series: [{
       name: 'Consumption', type: 'pie', radius: ['45%','70%'], avoidLabelOverlap: false,
       itemStyle: { borderRadius: 4, borderColor: 'rgba(0,0,0,0.2)', borderWidth: 1 },

@@ -6,7 +6,16 @@
         <i class="bi bi-table text-orange-500 text-xl mr-3"></i>
         <h3 class="font-semibold">Live Meter Readings</h3>
       </div>
-      <div class="text-sm text-gray-400">Updates every 1 minute</div>
+      <div class="flex items-center gap-3">
+        <div class="text-sm text-gray-400">Updates every 1 minute</div>
+        <button 
+          @click="downloadCSV"
+          class="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+        >
+          <i class="bi bi-download text-xs"></i>
+          Save CSV
+        </button>
+      </div>
     </div>
 
     <DataTable :value="displayedReadings" class="custom-table">
@@ -224,6 +233,23 @@ function openTrendModal(metric, description, channel) {
   selectedMetricDescription.value = description
   selectedChannel.value = channel
   trendModalVisible.value = true
+}
+
+// CSV download function
+function downloadCSV() {
+  const csvContent = 'Timestamp,V L1,V L2,V L3,A L1,A L2,A L3,kW,PF,Hz\n' + 
+    new Date().toISOString() + ',0,0,0,0,0,0,0,0,0\n' + 
+    new Date(Date.now() - 3600000).toISOString() + ',0,0,0,0,0,0,0,0,0\n'
+  
+  const blob = new Blob([csvContent], { type: 'text/csv' })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'electricity-meter-readings.csv'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
 }
 
 // ✅ Fetch historic data — last 30 minutes to ensure we get ~10 recent samples

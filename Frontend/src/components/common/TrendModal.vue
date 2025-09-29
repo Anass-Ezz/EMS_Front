@@ -309,10 +309,10 @@ function getUnit() {
     'V L1': 'V', 'V L2': 'V', 'V L3': 'V',
     'A L1': 'A', 'A L2': 'A', 'A L3': 'A',
     'kW': 'kW', 'PF': '', 'Hz': 'Hz',
-    'Flow Rate': props.meterType === 'gas' ? 'kg/s' : 'L/s',
+    'Flow Rate': props.meterType === 'gas' ? 'm³/s' : 'kg/s',
     'Temperature': '°C',
     'Pressure': 'bar',
-    'Consumption': props.meterType === 'gas' ? 'kg/h' : 'L/h'
+    'Consumption': props.meterType === 'gas' ? 'm³/h' : 'kg/h'
   }
   return unitMap[props.metricName] || ''
 }

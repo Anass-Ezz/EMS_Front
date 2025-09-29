@@ -84,11 +84,11 @@ function formatFuelConsumptionWithUnit(value) {
   const num = parseFloat(value)
   
   if (Math.abs(num) < 1000) {
-    return `${num.toFixed(1)} L`
+    return `${num.toFixed(1)} kg`
   } else if (Math.abs(num) < 1000000) {
-    return `${(num / 1000).toFixed(1)} kL`
+    return `${(num / 1000).toFixed(1)} t`
   } else {
-    return `${(num / 1000000).toFixed(1)} ML`
+    return `${(num / 1000000).toFixed(1)} kt`
   }
 }
 
@@ -179,10 +179,10 @@ function processChartData(result) {
   // Extract series data with scaling applied
   const seriesData = props.channels.map(channelId => {
     const rawValues = result.data[channelId] || []
-    // Apply scaling: milliliters ÷ 1000 = L for consumption data
+    // Apply scaling: grams ÷ 1000 = kg for consumption data
     const scaledValues = rawValues.map(value => {
       if (value === null || value === undefined) return value
-      return value / 1000  // Convert milliliters to L
+      return value / 1000  // Convert grams to kg
     })
     
     return {
@@ -249,7 +249,7 @@ function updateChartOption() {
       },
       yAxis: {
         type: 'value',
-        name: 'Consumption (L)',
+        name: 'Consumption (kg)',
         axisLine: {
           lineStyle: {
             color: '#ea580c'

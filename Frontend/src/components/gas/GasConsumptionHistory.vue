@@ -84,11 +84,11 @@ function formatGasConsumptionWithUnit(value) {
   const num = parseFloat(value)
   
   if (Math.abs(num) < 1) {
-    return `${num.toFixed(3)} kg`
+    return `${num.toFixed(3)} m³`
   } else if (Math.abs(num) < 1000) {
-    return `${num.toFixed(2)} kg`
+    return `${num.toFixed(2)} m³`
   } else {
-    return `${(num / 1000).toFixed(2)} t`
+    return `${(num / 1000).toFixed(2)}k m³`
   }
 }
 
@@ -179,10 +179,10 @@ function processChartData(result) {
   // Extract series data with scaling applied
   const seriesData = props.channels.map(channelId => {
     const rawValues = result.data[channelId] || []
-    // Apply scaling: grams ÷ 1000 = kg for consumption data
+    // Apply scaling: m³ × 1,000,000 ÷ 1,000,000 = m³ for consumption data
     const scaledValues = rawValues.map(value => {
       if (value === null || value === undefined) return value
-      return value / 1000  // Convert grams to kg
+      return value / 1000000  // Convert m³ × 1,000,000 to m³
     })
     
     return {
@@ -249,7 +249,7 @@ function updateChartOption() {
       },
       yAxis: {
         type: 'value',
-        name: 'Consumption (kg)',
+        name: 'Consumption (m³)',
         axisLine: {
           lineStyle: {
             color: '#ea580c'

@@ -28,10 +28,11 @@
               v-if="rawResponses[i]"
               :style="{ height: `${height}px` }"
             >
-              <!-- pass full channel defs for scaling -->
+              <!-- pass full channel defs for scaling and units -->
               <MultiLineChart
                 :response="rawResponses[i]"
                 :scale-config="tabs[i].channels"
+                :unit-config="tabs[i].channels"
                 :isLegend="tabs[i].channels.length > 1"
               />
             </div>
@@ -46,9 +47,9 @@
 
 <script setup>
 /* ─── imports ────────────────────────────────────────── */
-import { inject, reactive, ref, watch, onMounted, computed } from 'vue'
+import MultiLineChart from '@/the_components/charts/MultiLineChart.vue';
+import { computed, inject, onMounted, reactive, ref, watch } from 'vue';
 const refreshContext = inject('refresh');
-import MultiLineChart from '@/the_components/charts/MultiLineChart.vue'
 
 /* ─── props ──────────────────────────────────────────── */
 const props = defineProps({

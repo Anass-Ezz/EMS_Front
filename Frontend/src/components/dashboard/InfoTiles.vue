@@ -82,7 +82,7 @@
           <span class="text-[18px] ">Consumption </span>
         </div>
         <div class="col-span-5">
-          <span class="text-[20px] font-bold">{{ formatNum(displayGasConsumptionVal, 2, 2) }} <span class="text-[15px] ml-1 text-gray-500">kg</span></span>
+          <span class="text-[20px] font-bold">{{ formatNum(displayGasConsumptionVal, 2, 2) }} <span class="text-[15px] ml-1 text-gray-500">m³</span></span>
         </div>
         <div class="col-span-2">
           <span :class="pctGasMovement >= 0 ? 'text-red-500' : 'text-green-500'" class="text-[13px] ">{{ signedPct(pctGasMovement) }}</span>
@@ -121,7 +121,7 @@
           <span class="text-[18px] ">Consumption </span>
         </div>
         <div class="col-span-5">
-          <span class="text-[20px] font-bold">{{ formatNum(displayFuelConsumptionVal, 2, 2) }} <span class="text-[15px] ml-1 text-gray-500">L</span></span>
+          <span class="text-[20px] font-bold">{{ formatNum(displayFuelConsumptionVal, 2, 2) }} <span class="text-[15px] ml-1 text-gray-500">kg</span></span>
         </div>
         <div class="col-span-2">
           <span :class="pctFuelMovement >= 0 ? 'text-red-500' : 'text-green-500'" class="text-[13px] ">{{ signedPct(pctFuelMovement) }}</span>
@@ -177,8 +177,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
 import PictorialBar from '@/components/charts/PictorialBar.vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 /* ================================================================
  * FUNCTIONALITY for all tiles (design preserved)
@@ -362,7 +362,7 @@ function computePeriod(seed, period) {
   const coverage = CONFIG.solarCoverageLV.min + (CONFIG.solarCoverageLV.max - CONFIG.solarCoverageLV.min) * rand()
   const solarKWh = lvDaylightEnergy * coverage
 
-  // Gas consumption (for ovens)
+  // Gas consumption (for ovens) - convert from m³ to kg using density
   const gasOvens = [
     { name: 'Small Oven', usage: GAS_OVEN_USAGE.smallOven, count: 3 },
     { name: 'Medium Oven', usage: GAS_OVEN_USAGE.mediumOven, count: 2 },
@@ -374,11 +374,15 @@ function computePeriod(seed, period) {
     const ovenUtil = util() // Different utilization for each oven
     gasConsumptionM3 += oven.usage * oven.count * totalActiveHours * ovenUtil
   }
+  // Convert m³ to kg using natural gas density (0.717 kg/m³)
+  const gasConsumptionKg = gasConsumptionM3 * 0.717
   const gasCostMAD = gasConsumptionM3 * CONFIG.gasPricePerM3
 
-  // Fuel consumption (for chaudière)
+  // Fuel consumption (for chaudière) - convert from L to kg using density
   const chaudiereUtil = util()
   const fuelConsumptionL = CHAUDIERE_FUEL_USAGE * totalActiveHours * chaudiereUtil
+  // Convert L to kg using diesel density (0.85 kg/L)
+  const fuelConsumptionKg = fuelConsumptionL * 0.85
   const fuelCostMAD = fuelConsumptionL * CONFIG.fuelPricePerL
 
   // CO2 emissions
@@ -391,9 +395,9 @@ function computePeriod(seed, period) {
     energyKWh: totalEnergyKWh, 
     costMAD, 
     solarKWh,
-    gasConsumptionM3,
+    gasConsumptionM3: gasConsumptionKg, // Return kg instead of m³
     gasCostMAD,
-    fuelConsumptionL,
+    fuelConsumptionL: fuelConsumptionKg, // Return kg instead of L
     fuelCostMAD,
     co2Electricity,
     co2Gas,

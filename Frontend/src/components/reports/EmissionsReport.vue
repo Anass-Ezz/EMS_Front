@@ -144,11 +144,11 @@
               <span class="font-mono">{{ constants.CO2_FACTOR_ELEC_KG_PER_KWH.toFixed(2) }} kgCO₂e / kWh</span>
             </li>
             <li class="flex justify-between border-b border-gray-700/50 pb-1">
-              <span>Natural Gas (Scope 1)</span>
+              <span>Natural Gas (Scope 2)</span>
               <span class="font-mono">{{ constants.CO2_FACTOR_GAS_KG_PER_M3.toFixed(2) }} kgCO₂e / m³</span>
             </li>
             <li class="flex justify-between border-b border-gray-700/50 pb-1">
-              <span>Fuel Oil (Scope 1)</span>
+              <span>Fuel Oil (Scope 2)</span>
               <span class="font-mono">{{ constants.CO2_FACTOR_FUEL_KG_PER_L.toFixed(2) }} kgCO₂e / L</span>
             </li>
           </ul>
@@ -360,6 +360,7 @@ import VChart from 'vue-echarts'
     const totalGas_kg = tsGas.value.reduce((a, p) => a + (p.kg_s_0 + p.kg_s_1) * dtSeconds, 0)
     const totalGas_m3 = totalGas_kg / constants.DENSITY_GAS_KG_PER_M3
     const totalFuel_L = tsFuel.value.reduce((a, p) => a + p.L_s * dtSeconds, 0)
+    const totalFuel_kg = totalFuel_L * 0.85 // Convert L to kg using diesel density
   
     const emissionsElec_t = (totalElecKWh * constants.CO2_FACTOR_ELEC_KG_PER_KWH) / 1000
     const emissionsGas_t = (totalGas_m3 * constants.CO2_FACTOR_GAS_KG_PER_M3) / 1000
@@ -372,7 +373,7 @@ import VChart from 'vue-echarts'
     tableSources.value = [
       { source: 'Grid Electricity', consumption: totalElecKWh, unit: 'kWh', emissions_tCO2e: emissionsElec_t, share: totalEmissions_t > 0 ? emissionsElec_t / totalEmissions_t : 0 },
       { source: 'Natural Gas', consumption: totalGas_m3, unit: 'm³', emissions_tCO2e: emissionsGas_t, share: totalEmissions_t > 0 ? emissionsGas_t / totalEmissions_t : 0 },
-      { source: 'Fuel Oil', consumption: totalFuel_L, unit: 'L', emissions_tCO2e: emissionsFuel_t, share: totalEmissions_t > 0 ? emissionsFuel_t / totalEmissions_t : 0 },
+      { source: 'Fuel Oil', consumption: totalFuel_kg, unit: 'kg', emissions_tCO2e: emissionsFuel_t, share: totalEmissions_t > 0 ? emissionsFuel_t / totalEmissions_t : 0 },
     ].sort((a, b) => b.emissions_tCO2e - a.emissions_tCO2e)
   }
   

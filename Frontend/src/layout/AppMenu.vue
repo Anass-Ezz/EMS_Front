@@ -37,12 +37,26 @@ const smartMeterNames = {
   'sm-b-4': 'WS-B Utilities'
 }
 
+const gasMeterNames = {
+  'gm-0': 'Gas Meter 0 - Industrial Oven',
+  'gm-1': 'Gas Meter 1 - Industrial Oven'
+}
+
 // Generate smart meter menu items
 const generateSmartMeterItems = () => {
   return Object.entries(smartMeterNames).map(([meterId, meterName]) => ({
     label: meterName,
     icon: icons["meter"],
     to: `/meters?meterId=${meterId}&meterName=${encodeURIComponent(meterName)}`
+  }))
+}
+
+// Generate gas meter menu items
+const generateGasMeterItems = () => {
+  return Object.entries(gasMeterNames).map(([meterId, meterName]) => ({
+    label: meterName,
+    icon: icons["flame"],
+    to: `/gas-meters?meterId=${meterId}&meterName=${encodeURIComponent(meterName)}`
   }))
 }
 
@@ -75,9 +89,10 @@ const model = ref([
                 items: generateSmartMeterItems()
             },
             { 
-                label: 'Gas Meters', 
+                label: 'Gas Meters',
                 icon: icons["flame"], 
-                to: '/gas-meters?meterId=gm-0&meterName=Gas%20Meter%200%20-%20Industrial%20Oven'
+                to: '/gas-meters?meterId=gm-0&meterName=Gas%20Meter%200%20-%20Industrial%20Oven', // Default to first meter
+                items: generateGasMeterItems()
             },
             { 
                 label: 'Fuel Meters', 

@@ -38,9 +38,9 @@ const placeholder = '---'
 function formatFlowRate(value) {
   if (value === null || typeof value === 'undefined') return { value: placeholder, unit: '' }
   const absValue = Math.abs(value)
-  if (absValue < 1) return { value: (value * 1000).toFixed(1), unit: 'mL/s' }
-  if (absValue < 10) return { value: value.toFixed(2), unit: 'L/s' }
-  return { value: value.toFixed(1), unit: 'L/s' }
+  if (absValue < 0.001) return { value: (value * 1000).toFixed(3), unit: 'g/s' }
+  if (absValue < 1) return { value: value.toFixed(3), unit: 'kg/s' }
+  return { value: value.toFixed(2), unit: 'kg/s' }
 }
 
 function formatTemperature(value) {
@@ -89,11 +89,11 @@ const unitPressure = computed(() => {
 // Generate average values
 function generateAverageValues() {
   // Generate realistic average values for fuel meters
-  const baseFlow = 0.3 + (Math.random() * 0.2) // 0.3-0.5 L/s (realistic boiler)
+  const baseFlow = 0.3 + (Math.random() * 0.2) // 0.3-0.5 L/s (realistic boiler) - synthetic data, convert to kg/s
   const baseTemp = 35 + (Math.random() * 5) // 35-40°C (preheated fuel)
   const basePressure = 2.0 + (Math.random() * 0.5) // 2.0-2.5 bar (realistic boiler pressure)
 
-  avgFlowRate.value = baseFlow
+  avgFlowRate.value = baseFlow * 0.85 // Convert L/s to kg/s using diesel density
   avgTemperature.value = baseTemp
   avgPressure.value = basePressure
 }

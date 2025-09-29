@@ -1,11 +1,11 @@
 <template>  
-  <MultiLineChart :response="response" :color="-1" :isLegend="false"/>
+  <MultiLineChart :response="response" :color="-1" :isLegend="false" :unit-config="unitConfig" :scale-config="scaleConfig"/>
 </template>
 
 <script setup>
-import { inject, ref, watch, computed } from 'vue'
+import MultiLineChart from '@/the_components/charts/MultiLineChart.vue';
+import { computed, inject, ref, watch } from 'vue';
 const refreshContext = inject('refresh');
-import MultiLineChart from '@/the_components/charts/MultiLineChart.vue'
 
 // Inject global state
 const ws = inject('ws')
@@ -14,7 +14,9 @@ const dateRangeContext = inject('dateRange')
 const resolutionContext = inject('resolution')
 
 const props = defineProps({
-  channelAddress: { type: Array, required: true }
+  channelAddress: { type: Array, required: true },
+  unitConfig: { type: Array, default: () => [] },
+  scaleConfig: { type: Array, default: () => [] }
 })
 
 const response = ref({})

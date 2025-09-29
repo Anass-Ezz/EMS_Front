@@ -17,10 +17,10 @@
 <script setup>
 import { BarChart } from 'echarts/charts'
 import {
-  GridComponent,
-  LegendComponent,
-  TitleComponent,
-  TooltipComponent
+    GridComponent,
+    LegendComponent,
+    TitleComponent,
+    TooltipComponent
 } from 'echarts/components'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -252,9 +252,26 @@ function processChartData(actualData, forecastData) {
     const timestamp = timestamps[index]
     const dataTime = new Date(timestamp)
     
-    // If this is today (offset = 0) and the data time is in the future, hide actual data
-    if (props.offset === 0 && dataTime > now) {
-      return null // Hide actual data for future time periods
+    // For future dates (offset > 0), hide ALL actual data
+    if (props.offset > 0) {
+      return null // No actual data for future dates
+    }
+    
+    // If this is today (offset = 0) and the data time is in the future, set to null
+    if (props.offset === 0) {
+      // For day resolution, compare at hour level
+      if (props.timeRange === 'day') {
+        const dataHour = dataTime.getHours()
+        const currentHour = now.getHours()
+        if (dataHour > currentHour) {
+          return null // Hide actual data for future hours
+        }
+      } else {
+        // For other time ranges, compare at full time level
+        if (dataTime > now) {
+          return null // Hide actual data for future time periods
+        }
+      }
     }
     
     return value
@@ -316,9 +333,26 @@ function calculateAndEmitStats(actualData, forecastData) {
     const timestamp = timestamps[index]
     const dataTime = new Date(timestamp)
     
-    // If this is today (offset = 0) and the data time is in the future, exclude from stats
-    if (props.offset === 0 && dataTime > now) {
+    // For future dates (offset > 0), exclude ALL actual data from stats
+    if (props.offset > 0) {
       return false
+    }
+    
+    // If this is today (offset = 0) and the data time is in the future, exclude from stats
+    if (props.offset === 0) {
+      // For day resolution, compare at hour level
+      if (props.timeRange === 'day') {
+        const dataHour = dataTime.getHours()
+        const currentHour = now.getHours()
+        if (dataHour > currentHour) {
+          return false // Exclude future hours from stats
+        }
+      } else {
+        // For other time ranges, compare at full time level
+        if (dataTime > now) {
+          return false
+        }
+      }
     }
     
     return value !== null && value !== undefined
@@ -333,8 +367,8 @@ function calculateAndEmitStats(actualData, forecastData) {
   const error = actualAvg > 0 ? ((forecastAvg - actualAvg) / actualAvg) * 100 : 0
   
   emit('update-stats', {
-    actualAvg: (actualAvg / 1000).toFixed(2), // Convert milliliters to L
-    forecastAvg: (forecastAvg / 1000).toFixed(2), // Convert milliliters to L
+    actualAvg: (actualAvg / 1000).toFixed(2), // Convert milliliters to kg
+    forecastAvg: (forecastAvg / 1000).toFixed(2), // Convert milliliters to kg
     error: error.toFixed(1)
   })
 }
@@ -355,7 +389,7 @@ function updateChartOption() {
         params.forEach(param => {
           const value = param.value
           const formattedValue = value !== null && value !== undefined ? 
-            `${(value / 1000).toFixed(2)} L` : 'N/A'
+            `${(value / 1000).toFixed(2)} kg` : 'N/A'
           tooltipText += `${param.marker} ${param.seriesName}: ${formattedValue}<br/>`
         })
         return tooltipText
@@ -390,7 +424,7 @@ function updateChartOption() {
     },
     yAxis: {
       type: 'value',
-      name: 'Consumption (L)',
+      name: 'Consumption (kg)',
       axisLine: {
         lineStyle: {
           color: '#4b5563'
@@ -410,7 +444,7 @@ function updateChartOption() {
       {
         name: 'Actual',
         type: 'bar',
-        data: chartData.value.actualData.map(val => val / 1000), // Convert milliliters to L
+        data: chartData.value.actualData.map(val => val / 1000), // Convert milliliters to kg
         itemStyle: {
           color: '#ef4444'
         },
@@ -419,7 +453,7 @@ function updateChartOption() {
       {
         name: 'Forecast',
         type: 'bar',
-        data: chartData.value.forecastData.map(val => val / 1000), // Convert milliliters to L
+        data: chartData.value.forecastData.map(val => val / 1000), // Convert milliliters to kg
         itemStyle: {
           color: '#f59e0b'
         },

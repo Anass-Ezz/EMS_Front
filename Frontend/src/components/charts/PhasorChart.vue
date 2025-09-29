@@ -197,17 +197,65 @@ function buildOption() {
       bottom: 10,
       left: 'center',
       orient: 'horizontal',
-      itemWidth: 20,
-      itemHeight: 4,
+      itemWidth: 15,
+      itemHeight: 8,
       itemGap: 15,
-      textStyle: { color: '#cbd5e1', fontSize: 11 },
+      textStyle: { color: '#cbd5e1', fontSize: 13 },
       data: [
-        { name: 'Va', icon: 'roundRect', lineStyle: { type: 'solid' } },
-        { name: 'Vb', icon: 'roundRect', lineStyle: { type: 'solid' } },
-        { name: 'Vc', icon: 'roundRect', lineStyle: { type: 'solid' } },
-        { name: 'Ia', icon: 'roundRect', lineStyle: { type: 'dashed' } },
-        { name: 'Ib', icon: 'roundRect', lineStyle: { type: 'dashed' } },
-        { name: 'Ic', icon: 'roundRect', lineStyle: { type: 'dashed' } }
+        { 
+          name: 'Va', 
+          icon: 'rect',
+          itemStyle: { 
+            color: vColors[0],
+            borderWidth: 0
+          }
+        },
+        { 
+          name: 'Vb', 
+          icon: 'rect',
+          itemStyle: { 
+            color: vColors[1],
+            borderWidth: 0
+          }
+        },
+        { 
+          name: 'Vc', 
+          icon: 'rect',
+          itemStyle: { 
+            color: vColors[2],
+            borderWidth: 0
+          }
+        },
+        { 
+          name: 'Ia', 
+          icon: 'rect',
+          itemStyle: { 
+            color: 'transparent',
+            borderColor: vColors[0],
+            borderWidth: 2,
+            borderType: 'dashed'
+          }
+        },
+        { 
+          name: 'Ib', 
+          icon: 'rect',
+          itemStyle: { 
+            color: 'transparent',
+            borderColor: vColors[1],
+            borderWidth: 2,
+            borderType: 'dashed'
+          }
+        },
+        { 
+          name: 'Ic', 
+          icon: 'rect',
+          itemStyle: { 
+            color: 'transparent',
+            borderColor: vColors[2],
+            borderWidth: 2,
+            borderType: 'dashed'
+          }
+        }
       ]
     },
     grid: {

@@ -1,44 +1,5 @@
 <template>
   <div class="bg-black border-[0px] rounded-[6px] border-gray-700">
-    <!-- Manual/Automatic Mode Controls -->
-    <div class="flex items-center justify-between p-4 border-b border-gray-700">
-      <div class="flex items-center gap-4">
-        <label class="flex items-center gap-2 text-orange-300">
-          <input 
-            type="checkbox" 
-            v-model="isManualMode"
-            class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-          />
-          Manual Time Mode
-        </label>
-        
-        <div v-if="isManualMode" class="flex items-center gap-3 text-orange-300">
-          <label class="text-sm">Time:</label>
-          <input 
-            type="number" 
-            v-model="manualHour"
-            min="0" 
-            max="23"
-            class="w-16 px-2 py-1 text-black bg-gray-200 rounded text-center"
-            placeholder="HH"
-          />
-          <span>:</span>
-          <input 
-            type="number" 
-            v-model="manualMinute"
-            min="0" 
-            max="59"
-            class="w-16 px-2 py-1 text-black bg-gray-200 rounded text-center"
-            placeholder="MM"
-          />
-        </div>
-      </div>
-      
-      <div class="text-sm text-gray-400">
-        {{ isManualMode ? `Manual: ${manualHour.toString().padStart(2, '0')}:${manualMinute.toString().padStart(2, '0')}` : 'Automatic Mode' }}
-      </div>
-    </div>
-
     <!-- Main Content -->
     <div class="grid grid-cols-12 items-center p-4">
     <div class="col-span-4">
@@ -254,10 +215,6 @@ let currentPower = 0;
 let activeEnergy = 0;
 let reactiveEnergy = 0;
 
-// Manual/Automatic mode toggle
-const isManualMode = ref(false);
-const manualHour = ref(12);
-const manualMinute = ref(0);
 
 // Helper functions
 function getRandom(min, max) {
@@ -265,15 +222,6 @@ function getRandom(min, max) {
 }
 
 function getLocalTime() {
-  // Use manual time if in manual mode
-  if (isManualMode.value) {
-    return {
-      hour: manualHour.value,
-      minute: manualMinute.value,
-      dayOfYear: Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000)
-    };
-  }
-  
   // Casablanca timezone offset (UTC+1 during standard time, UTC+0 during DST)
   // For simplicity, we'll use UTC+1 as an approximation
   const now = new Date();
@@ -434,8 +382,8 @@ function animate(timestamp) {
   if (!lastUpdateTime) lastUpdateTime = timestamp;
   const deltaTime = timestamp - lastUpdateTime;
   
-  // Update every 1000ms (1 second)
-  if (deltaTime >= 1000) {
+  // Update every 5000ms (5 seconds)
+  if (deltaTime >= 5000) {
     updateSimulatedData();
     lastUpdateTime = timestamp;
   }

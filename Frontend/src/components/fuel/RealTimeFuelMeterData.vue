@@ -65,9 +65,9 @@ const placeholder = '---'
 function formatFlowRate(value) {
   if (value === null || typeof value === 'undefined') return { value: placeholder, unit: '' }
   const absValue = Math.abs(value)
-  if (absValue < 1) return { value: (value * 1000).toFixed(1), unit: 'mL/s' }
-  if (absValue < 10) return { value: value.toFixed(2), unit: 'L/s' }
-  return { value: value.toFixed(1), unit: 'L/s' }
+  if (absValue < 0.001) return { value: (value * 1000).toFixed(3), unit: 'g/s' }
+  if (absValue < 1) return { value: value.toFixed(3), unit: 'kg/s' }
+  return { value: value.toFixed(2), unit: 'kg/s' }
 }
 
 function formatTemperature(value) {
@@ -83,9 +83,9 @@ function formatPressure(value) {
 function formatConsumption(value) {
   if (value === null || typeof value === 'undefined') return { value: placeholder, unit: '' }
   const absValue = Math.abs(value)
-  if (absValue < 1000) return { value: value.toFixed(1), unit: 'L' }
-  if (absValue < 1000000) return { value: (value / 1000).toFixed(1), unit: 'kL' }
-  return { value: (value / 1000000).toFixed(1), unit: 'ML' }
+  if (absValue < 1000) return { value: value.toFixed(1), unit: 'kg' }
+  if (absValue < 1000000) return { value: (value / 1000).toFixed(1), unit: 't' }
+  return { value: (value / 1000000).toFixed(1), unit: 'kt' }
 }
 
 function formatCurrencyMud(value) {
@@ -314,16 +314,16 @@ function processHistoricData(historic, channels) {
         Number.isFinite(midnightConsumptionValue) && Number.isFinite(currentConsumptionValue)) {
       
       const consumptionTodayRaw = currentConsumptionValue - midnightConsumptionValue
-      consumptionToday.value = Math.max(0, consumptionTodayRaw / 1000) // Scale: milliliters ÷ 1000 = L
-      console.log('Fuel consumed today (raw milliliters):', consumptionTodayRaw)
-      console.log('Fuel consumed today (scaled to L):', consumptionToday.value)
+      consumptionToday.value = Math.max(0, consumptionTodayRaw / 1000) // Scale: grams ÷ 1000 = kg
+      console.log('Fuel consumed today (raw grams):', consumptionTodayRaw)
+      console.log('Fuel consumed today (scaled to kg):', consumptionToday.value)
       console.log('==========================================')
     }
   }
 
   // Find the latest valid values for real-time display (go backwards from the end)
   for (let i = timestamps.length - 1; i >= 0; i--) {
-    // Set flow rate if not already set and value is valid (scale: mL/s ÷ 1000 = L/s)
+    // Set flow rate if not already set and value is valid (scale: g/s ÷ 1000 = kg/s)
     if (flowRate.value === null && flowValues?.[i] != null && Number.isFinite(flowValues[i])) {
       flowRate.value = flowValues[i] / 1000
       console.log('Set flowRate.value to:', flowRate.value, '(raw:', flowValues[i], ')')

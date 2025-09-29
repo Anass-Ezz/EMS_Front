@@ -39,10 +39,6 @@ const props = defineProps({
   channels: {
     type: Array,
     required: true
-  },
-  chartType: {
-    type: String,
-    default: 'metrics'
   }
 })
 
@@ -76,34 +72,12 @@ const toDate = computed(() => {
 
 const resolution = computed(() => resolutionContext.value.value)
 
-// Fuel formatting functions
-function formatFuelFlowWithUnit(value) {
-  if (value === null || value === undefined || isNaN(value)) return 'N/A'
-  
-  const num = parseFloat(value)
-  if (isNaN(num)) return 'N/A'
-  
-  if (Math.abs(num) < 0.001) {
-    return `${(num * 1000).toFixed(3)} g/s`
-  } else if (Math.abs(num) < 1) {
-    return `${num.toFixed(3)} kg/s`
-  } else {
-    return `${num.toFixed(2)} kg/s`
-  }
-}
-
+// Temperature formatting function
 function formatTemperatureWithUnit(value) {
   if (value === null || value === undefined || isNaN(value)) return 'N/A'
   const num = parseFloat(value)
   if (isNaN(num)) return 'N/A'
   return `${num.toFixed(1)}°C`
-}
-
-function formatPressureWithUnit(value) {
-  if (value === null || value === undefined || isNaN(value)) return 'N/A'
-  const num = parseFloat(value)
-  if (isNaN(num)) return 'N/A'
-  return `${num.toFixed(1)} bar`
 }
 
 // Wait for WebSocket to be open
@@ -126,7 +100,7 @@ async function fetchData() {
     const OUTER = crypto.randomUUID()
     const INNER = crypto.randomUUID()
     
-    // Use queryHistoricTimeseriesData for fuel metrics data
+    // Use queryHistoricTimeseriesData for gas temperature data
     ws.send(JSON.stringify({
       jsonrpc: '2.0',
       id: OUTER,
@@ -172,14 +146,14 @@ async function fetchData() {
     ws.addEventListener('message', handleMessage)
     
   } catch (error) {
-    console.error('Error fetching fuel metrics data:', error)
+    console.error('Error fetching gas temperature data:', error)
     loading.value = false
   }
 }
 
 // Process chart data
 function processChartData(result) {
-  // Format timestamps for metrics chart
+  // Format timestamps for temperature chart
   const formattedTimestamps = result.timestamps.map(ts => {
     const date = new Date(ts)
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -190,26 +164,11 @@ function processChartData(result) {
     const rawValues = result.data[channelId] || []
     let scaledValues = rawValues
     
-    // Apply appropriate scaling based on channel type
-    if (channelId.includes('Temperature')) {
-      // Temperature: deci-°C ÷ 10 = °C
-      scaledValues = rawValues.map(value => {
-        if (value === null || value === undefined) return value
-        return value / 10
-      })
-    } else if (channelId.includes('Pressure')) {
-      // Pressure: mbar ÷ 1000 = bar
-      scaledValues = rawValues.map(value => {
-        if (value === null || value === undefined) return value
-        return value / 1000
-      })
-    } else if (channelId.includes('FlowRate')) {
-      // FlowRate: g/s ÷ 1000 = kg/s
-      scaledValues = rawValues.map(value => {
-        if (value === null || value === undefined) return value
-        return value / 1000
-      })
-    }
+    // Apply temperature scaling: deci-°C ÷ 10 = °C
+    scaledValues = rawValues.map(value => {
+      if (value === null || value === undefined) return value
+      return value / 10
+    })
     
     return {
       name: channelId,
@@ -226,7 +185,6 @@ function processChartData(result) {
 
 // Update chart option
 function updateChartOption() {
-  // Fuel metrics chart (line)
   chartOption.value = {
     backgroundColor: 'transparent',
     tooltip: {
@@ -258,30 +216,14 @@ function updateChartOption() {
         
         let tooltipText = `${formattedDate}<br/>`
         params.forEach(param => {
-          let formattedValue = 'N/A'
-          if (param.seriesName.includes('Flow Rate')) {
-            formattedValue = formatFuelFlowWithUnit(param.value)
-          } else if (param.seriesName.includes('Temperature')) {
-            formattedValue = formatTemperatureWithUnit(param.value)
-          } else if (param.seriesName.includes('Pressure')) {
-            formattedValue = formatPressureWithUnit(param.value)
-          }
-          tooltipText += `${param.marker} ${param.seriesName}: ${formattedValue}<br/>`
+          const formattedValue = formatTemperatureWithUnit(param.value)
+          tooltipText += `${param.marker} Temperature: ${formattedValue}<br/>`
         })
         return tooltipText
       }
     },
     legend: {
-      data: chartData.value.series.map(series => {
-        if (series.name.includes('FlowRate')) return 'Flow Rate'
-        if (series.name.includes('Temperature')) return 'Temperature'
-        if (series.name.includes('Pressure')) return 'Pressure'
-        return series.name
-      }),
-      textStyle: {
-        color: '#d1d5db'
-      },
-      top: 10
+      show: false
     },
     grid: {
       left: '3%',
@@ -304,15 +246,15 @@ function updateChartOption() {
     },
     yAxis: {
       type: 'value',
-      name: 'Values',
+      name: 'Temperature (°C)',
       axisLine: {
         lineStyle: {
-          color: '#4b5563'
+          color: '#ef4444'
         }
       },
       axisLabel: {
         color: '#9ca3af',
-        formatter: '{value}'
+        formatter: '{value}°C'
       },
       splitLine: {
         lineStyle: {
@@ -321,31 +263,17 @@ function updateChartOption() {
       }
     },
     series: chartData.value.series.map((series, index) => {
-      const isFlowRate = series.name.includes('FlowRate')
-      const isTemperature = series.name.includes('Temperature')
-      const isPressure = series.name.includes('Pressure')
-      
-      let color = '#22c55e' // Default green for pressure
-      
-      if (isFlowRate) {
-        color = '#3b82f6' // Blue
-      } else if (isTemperature) {
-        color = '#ef4444' // Red
-      } else if (isPressure) {
-        color = '#22c55e' // Green
-      }
-      
       return {
-        name: isFlowRate ? 'Flow Rate (kg/s)' : isTemperature ? 'Temperature (°C)' : isPressure ? 'Pressure (bar)' : series.name,
+        name: 'Temperature (°C)',
         type: 'line',
         data: series.values,
         smooth: true,
         lineStyle: {
-          color: color,
+          color: '#ef4444',
           width: 2
         },
         itemStyle: {
-          color: color
+          color: '#ef4444'
         }
       }
     })

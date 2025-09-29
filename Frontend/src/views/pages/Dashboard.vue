@@ -63,14 +63,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 
-import InfoTiles from '@/components/dashboard/InfoTiles.vue'
-import PowerFlowSankey from '@/components/charts/PowerFlowSankey.vue'
-import TabSankeyChart from '@/components/dashboard/TabSankeyChart.vue'
-import EnergyPie from '@/components/charts/EnergyPie.vue'
 import CostPie from '@/components/charts/CostPie.vue'
 import EnergyHistogram from '@/components/charts/EnergyHistogram.vue'
+import EnergyPie from '@/components/charts/EnergyPie.vue'
+import PowerFlowSankey from '@/components/charts/PowerFlowSankey.vue'
+import InfoTiles from '@/components/dashboard/InfoTiles.vue'
 import RangeToggle from '@/components/dashboard/RangeToggle.vue'
 
 const range = ref('day') // 'day' | 'week' | 'month'

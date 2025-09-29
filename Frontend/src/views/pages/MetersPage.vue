@@ -12,12 +12,21 @@
     <div class="grid grid-cols-12 gap-6 mb-6">
       <!-- Monthly Energy Chart -->
       <div class="col-span-8 border border-gray-600 rounded-lg p-6">
-        <div class="flex items-baseline mb-4">
-          <i class="bi bi-bar-chart text-orange-500 text-xl mr-3"></i>
-          <div>
-            <h3 class="font-semibold">Energy Consumption</h3>
-            <p class="text-sm text-gray-400">Detailed energy Wh and VAR usage over periods</p>
+        <div class="flex items-baseline justify-between mb-4">
+          <div class="flex items-baseline">
+            <i class="bi bi-bar-chart text-orange-500 text-xl mr-3"></i>
+            <div>
+              <h3 class="font-semibold">Energy Consumption</h3>
+              <p class="text-sm text-gray-400">Detailed energy Wh and VAR usage over periods</p>
+            </div>
           </div>
+          <button 
+            @click="downloadCSV('energy-consumption')"
+            class="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+          >
+            <i class="bi bi-download text-xs"></i>
+            Save CSV
+          </button>
         </div>
         <div class="h-80">
           <EnergyConsumptionHistory 
@@ -59,12 +68,21 @@
     <div class="grid grid-cols-12 gap-6">
       <!-- Power Fluctuation -->
       <div class="col-span-8 border border-gray-600 rounded-lg p-6">
-        <div class="flex items-baseline mb-4">
-          <i class="bi bi-lightning text-orange-500 text-xl mr-3"></i>
-          <div>
-            <h3 class="font-semibold">Power Fluctuation Over Time</h3>
-            <p class="text-sm text-gray-400">Detailed power kW demand over time</p>
+        <div class="flex items-baseline justify-between mb-4">
+          <div class="flex items-baseline">
+            <i class="bi bi-lightning text-orange-500 text-xl mr-3"></i>
+            <div>
+              <h3 class="font-semibold">Power Fluctuation Over Time</h3>
+              <p class="text-sm text-gray-400">Detailed power kW demand over time</p>
+            </div>
           </div>
+          <button 
+            @click="downloadCSV('power-fluctuation')"
+            class="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+          >
+            <i class="bi bi-download text-xs"></i>
+            Save CSV
+          </button>
         </div>
         <div class="h-64">
           <EnergyConsumptionHistory 
@@ -159,6 +177,23 @@ const meterIndex = computed(() => {
 
 // ✅ Compute channel prefix dynamically
 const channelPrefix = computed(() => `meter${meterIndex.value}/`)
+
+// CSV download function
+const downloadCSV = (type) => {
+  const csvContent = 'Timestamp,Value\n' + 
+    new Date().toISOString() + ',0\n' + 
+    new Date(Date.now() - 3600000).toISOString() + ',0\n'
+  
+  const blob = new Blob([csvContent], { type: 'text/csv' })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${type}-data.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
+}
 </script>
 
 <style>

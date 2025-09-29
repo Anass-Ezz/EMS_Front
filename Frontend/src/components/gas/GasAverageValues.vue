@@ -38,9 +38,9 @@ const placeholder = '---'
 function formatFlowRate(value) {
   if (value === null || typeof value === 'undefined') return { value: placeholder, unit: '' }
   const absValue = Math.abs(value)
-  if (absValue < 0.001) return { value: (value * 1000).toFixed(3), unit: 'g/s' }
-  if (absValue < 1) return { value: value.toFixed(4), unit: 'kg/s' }
-  return { value: value.toFixed(2), unit: 'kg/s' }
+  if (absValue < 0.001) return { value: (value * 1000).toFixed(3), unit: 'g/h' }
+  if (absValue < 1) return { value: value.toFixed(4), unit: 'm³/h' }
+  return { value: value.toFixed(2), unit: 'm³/h' }
 }
 
 function formatTemperature(value) {
@@ -89,7 +89,7 @@ const unitPressure = computed(() => {
 // Generate average values
 function generateAverageValues() {
   // Generate realistic average values for gas meters
-  const baseFlow = 0.010 + (Math.random() * 0.005) // 0.010-0.015 kg/s
+  const baseFlow = 0.010 + (Math.random() * 0.005) // 0.010-0.015 m³/h
   const baseTemp = 22 + (Math.random() * 6) // 22-28°C
   const basePressure = 0.3 + (Math.random() * 0.1) // 0.3-0.4 bar
 

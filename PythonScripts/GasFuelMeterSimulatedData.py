@@ -13,16 +13,14 @@ Exact field naming (no spaces, camel-case fields):
   fuelmeter0/Temperature, fuelmeter0/Pressure, fuelmeter0/FlowRate, fuelmeter0/Consumption
 
 Integer encodings:
-  Temperature  → deci-°C  (°C × 10)
-  Pressure     → mbar     (bar × 1000)
-  Gas Flow     → g/s      (kg/s × 1000)
-  Fuel Flow    → mL/s     (L/s × 1000)
-  Consumption  → grams (gas) / milliliters (fuel), monotonically increasing
+  Temperature  → deci-°C       (°C × 10)
+  Pressure     → mbar          (bar × 1000)
+  Gas Flow     → m³/s × 1,000,000   (store m³/s scaled to integer)
+  Gas Cons.    → m³ × 1,000,000     (cumulative volume, scaled)
+  Fuel Flow    → g/s           (kg/s × 1000)
+  Fuel Cons.   → grams         (cumulative mass)
 
-Scales (matched to your Vue animation):
-  Gas gm0: T 18–28 °C, P 0.20–0.40 bar, Flow 0.009–0.015 kg/s
-  Gas gm1: T 18–28 °C, P 0.20–0.40 bar, Flow 0.008–0.012 kg/s
-  Fuel fm0: T 32–40 °C, P 1.5–2.5 bar, Flow 0.008–0.025 L/s (FIXED - realistic for small industrial boiler)
+Gas density used for conversions: GAS_DENSITY_KG_PER_M3 = 0.80
 """
 
 import random
@@ -42,7 +40,7 @@ except Exception:
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-# ── INFLUX CONFIG (same as your script) ───────────────────────────────────
+# --- INFLUX CONFIG (unchanged) ---
 INFLUX_URL   = "http://localhost:8086"
 INFLUX_TOKEN = "s8OZpkya4MDRFytwIaE_fC48if3--lP9WOq1z03t4ext7VjzMSI0VUtNVHkIEAaijI6Xib3S3HB-oCR3zrBQZA=="  # same token
 ORG          = "innovx"
@@ -52,14 +50,14 @@ MEASUREMENT  = "data"
 TAG_KEY      = "edge"
 TAG_VALUE    = "0"
 
-# ── TIME WINDOW (same as your script) ─────────────────────────────────────
+# --- TIME WINDOW (unchanged) ---
 START = "2025-08-10T00:00:00Z"
 STOP  = "2025-10-22T00:00:00Z"
 STEP_SECONDS = 60  # 1-minute
 
-# ──────────────────────────────────────────────────────────────────────────
+# ========================================================================
 #                              HELPERS
-# ──────────────────────────────────────────────────────────────────────────
+# ========================================================================
 
 def local_day_start(ts_utc: datetime) -> datetime:
     loc = ts_utc.astimezone(PLANT_TZ)
@@ -69,21 +67,27 @@ def minutes_since_local_midnight(ts_utc: datetime) -> int:
     loc = ts_utc.astimezone(PLANT_TZ)
     return loc.hour * 60 + loc.minute
 
+def clamp(x: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, x))
+
 class ActivitySchedule:
-    """Random daily windows; optional night bias for fuel boiler."""
-    def __init__(self, seed: int, night_bias: bool = False):
+    """
+    Produces 0–3 activity windows per local day, with night-bias option.
+    """
+    def __init__(self, seed: int, night_bias: bool):
         self.rng = random.Random(seed)
-        self.cache: Dict[datetime, List[tuple]] = {}
         self.night_bias = night_bias
+        self.cache: Dict[datetime, List] = {}
 
     def _rand_start_minute(self) -> int:
-        if not self.night_bias:
-            return self.rng.randint(0, 1439)
-        if self.rng.random() < 0.7:
-            return self.rng.randint(20*60, 23*60 + 59) if self.rng.random() < 0.5 else self.rng.randint(0, 6*60 - 1)
-        return self.rng.randint(0, 1439)
+        r = self.rng
+        if self.night_bias:
+            # Prefer late evening / early night
+            choices = list(range(18*60, 23*60)) + list(range(0, 2*60)) + list(range(5*60, 7*60))
+            return r.choice(choices)
+        return r.randint(6*60, 22*60)
 
-    def get_day_windows(self, local_midnight_utc: datetime) -> List[tuple]:
+    def get_day_windows(self, local_midnight_utc: datetime):
         if local_midnight_utc in self.cache:
             return self.cache[local_midnight_utc]
         rng = self.rng
@@ -93,7 +97,7 @@ class ActivitySchedule:
             start = self._rand_start_minute()
             dur = rng.randint(60, 360)
             end = min(start + dur, 1439)
-            mult = rng.uniform(*( (1.15, 1.35) if self.night_bias else (1.05, 1.25) ))
+            mult = rng.uniform(*( (1.25, 1.50) if self.night_bias else (1.15, 1.40) ))  # INCREASED multipliers
             if any(abs(start - u) < 45 for u in used):
                 continue
             used.append(start)
@@ -114,50 +118,58 @@ class ActivitySchedule:
 def randwalk_towards(current: float, target: float, step_ratio: float,
                      jitter_ratio: float, min_val: float, max_val: float,
                      rng: random.Random) -> float:
-    move = step_ratio * (target - current)
-    jitter = (rng.random() - 0.5) * 2.0 * jitter_ratio * max(abs(target), 1e-6)
-    x = current + move + jitter
-    return max(min_val, min(x, max_val))
+    delta = (target - current) * step_ratio
+    jitter = (rng.random() - 0.5) * (max_val - min_val) * jitter_ratio
+    nxt = current + delta + jitter
+    return clamp(nxt, min_val, max_val)
 
-def clamp(x: float, lo: float, hi: float) -> float:
-    return max(lo, min(x, hi))
+# ========================================================================
+#                         METER CONFIG (gas flow retuned)
+# ========================================================================
 
-# ──────────────────────────────────────────────────────────────────────────
-#                           METER CONFIG
-# ──────────────────────────────────────────────────────────────────────────
+# Gas density for converting volumetric targets to internal kg/s
+GAS_DENSITY_KG_PER_M3 = 0.80
+
+# Helper to convert desired m³/h band to kg/s for the simulator's internals
+def _kgps_from_m3ph(m3_per_h: float) -> float:
+    return (m3_per_h * GAS_DENSITY_KG_PER_M3) / 3600.0
+
 GAS_CONFIGS = {
-    0: {  # gasmeter0
+    0: {  # gasmeter0 — target 0.6–1.5 m³/h (≈6–15 kW) - INCREASED
         "name": "gasmeter0",
         "T_min": 18.0, "T_max": 28.0,      # °C
         "P_min": 0.20, "P_max": 0.40,      # bar
-        "F_min": 0.009, "F_max": 0.015,    # kg/s
+        # Internals must be kg/s: convert 0.6–1.5 m³/h using rho=0.80 kg/m³
+        "F_min": _kgps_from_m3ph(0.6),
+        "F_max": _kgps_from_m3ph(1.5),
         "night_bias": False,
-        "start_consumption_g": 20_000 * 1000,  # grams
+        "start_consumption_g": 30_000 * 1_000,  # m³ × 1e6 (initial total volume) - INCREASED
     },
-    1: {  # gasmeter1
+    1: {  # gasmeter1 — target 0.4–1.0 m³/h (≈4–10 kW) - INCREASED
         "name": "gasmeter1",
         "T_min": 18.0, "T_max": 28.0,
         "P_min": 0.20, "P_max": 0.40,
-        "F_min": 0.008, "F_max": 0.012,
+        "F_min": _kgps_from_m3ph(0.4),
+        "F_max": _kgps_from_m3ph(1.0),
         "night_bias": False,
-        "start_consumption_g": 15_000 * 1000,  # grams
+        "start_consumption_g": 25_000 * 1_000,  # m³ × 1e6 (initial total volume) - INCREASED
     },
 }
 
 FUEL_CONFIG = {
-    0: {  # fuelmeter0
+    0: {  # fuelmeter0 — INCREASED flow rates and consumption
         "name": "fuelmeter0",
         "T_min": 32.0, "T_max": 40.0,      # °C
         "P_min": 1.50, "P_max": 2.50,      # bar
-        "F_min": 0.008, "F_max": 0.025,    # L/s (FIXED: was 0.10–0.50, now realistic 0.008-0.025)
+        "F_min": 0.012, "F_max": 0.040,    # L/s - INCREASED from 0.008-0.025
         "night_bias": True,
-        "start_consumption_ml": 200 * 1000,  # milliliters
+        "start_consumption_ml": 350 * 1000,  # grams (initial total mass) - INCREASED from 200k
     }
 }
 
-# ──────────────────────────────────────────────────────────────────────────
-#                         WORKER IMPLEMENTATIONS
-# ──────────────────────────────────────────────────────────────────────────
+# ========================================================================
+#                              GAS METERS
+# ========================================================================
 
 def run_gas_meter(meter_id: int, cfg: dict):
     rng = random.Random(3000 + meter_id)
@@ -172,13 +184,14 @@ def run_gas_meter(meter_id: int, cfg: dict):
     ONE_DAY  = timedelta(days=1)
 
     name = cfg["name"]
-    print(f"[Thread gas{meter_id}] {name} — start")
+    print(f"[Thread gas{meter_id}] {name} -- start")
     sys.stdout.flush()
 
+    # Initialize starting values
     T = (cfg["T_min"] + cfg["T_max"]) / 2.0
     P = (cfg["P_min"] + cfg["P_max"]) / 2.0
-    F = (cfg["F_min"] + cfg["F_max"]) / 2.0  # kg/s
-    consumption_g = int(cfg["start_consumption_g"])
+    F = (cfg["F_min"] + cfg["F_max"]) / 2.0  # internally kg/s
+    consumption_g = int(cfg["start_consumption_g"])  # holds m³ × 1e6
 
     current = start_dt
     while current < stop_dt:
@@ -199,14 +212,16 @@ def run_gas_meter(meter_id: int, cfg: dict):
             F = randwalk_towards(F, F_tgt, step_ratio=0.14, jitter_ratio=0.02,
                                  min_val=cfg["F_min"], max_val=cfg["F_max"], rng=rng)
 
-            inc_g_per_min = int(round(F * 1000.0 * 60.0))  # kg/s → g/s × 60
-            if inc_g_per_min < 0:
-                inc_g_per_min = 0
-            consumption_g += inc_g_per_min
+            # Convert GAS to volumetric units using density (kg/m³)
+            inc_m3_per_min = (F / GAS_DENSITY_KG_PER_M3) * 60.0  # m³ per minute
+            inc_m3_scaled  = int(round(inc_m3_per_min * 1_000_000))  # m³ × 1e6 per minute
+            if inc_m3_scaled < 0:
+                inc_m3_scaled = 0
+            consumption_g += inc_m3_scaled  # cumulative m³ × 1e6
 
             T_deciC = int(round(T * 10.0))     # °C × 10
             P_mbar  = int(round(P * 1000.0))   # bar × 1000
-            F_gps   = int(round(F * 1000.0))   # kg/s × 1000 → g/s
+            F_m3ps_scaled = int(round((F / GAS_DENSITY_KG_PER_M3) * 1_000_000))   # m³/s × 1e6
 
             point = (
                 Point(MEASUREMENT)
@@ -214,19 +229,23 @@ def run_gas_meter(meter_id: int, cfg: dict):
                 .time(ts, WritePrecision.NS)
                 .field(f"{name}/Temperature", T_deciC)
                 .field(f"{name}/Pressure",    P_mbar)
-                .field(f"{name}/FlowRate",    F_gps)
+                .field(f"{name}/FlowRate",    F_m3ps_scaled)
                 .field(f"{name}/Consumption", int(consumption_g))
             )
             points.append(point)
             ts += ONE_STEP
 
         write_api.write(bucket=BUCKET, org=ORG, record=points)
-        print(f"[gas{meter_id}] {name} — Day {day_end.date()} ({len(points)} pts)")
+        print(f"[gas{meter_id}] {name} -- Day {day_end.date()} ({len(points)} pts)")
         sys.stdout.flush()
         current = day_end
 
     client.close()
-    print(f"[Thread gas{meter_id}] {name} — done.")
+    print(f"[Thread gas{meter_id}] {name} -- done.")
+
+# ========================================================================
+#                         FUEL METERS (unchanged)
+# ========================================================================
 
 def run_fuel_meter(meter_id: int, cfg: dict):
     rng = random.Random(5000 + meter_id)
@@ -241,13 +260,14 @@ def run_fuel_meter(meter_id: int, cfg: dict):
     ONE_DAY  = timedelta(days=1)
 
     name = cfg["name"]
-    print(f"[Thread fuel{meter_id}] {name} — start")
+    print(f"[Thread fuel{meter_id}] {name} -- start")
     sys.stdout.flush()
 
-    T = (cfg["T_min"] + cfg["T_max"]) / 2.0   # °C
-    P = (cfg["P_min"] + cfg["P_max"]) / 2.0   # bar
-    F = (cfg["F_min"] + cfg["F_max"]) / 2.0   # L/s
-    consumption_ml = int(cfg["start_consumption_ml"])
+    # Initialize starting values
+    T = (cfg["T_min"] + cfg["T_max"]) / 2.0
+    P = (cfg["P_min"] + cfg["P_max"]) / 2.0
+    F = (cfg["F_min"] + cfg["F_max"]) / 2.0  # internally L/s
+    consumption_ml = int(cfg["start_consumption_ml"])  # holds grams total now
 
     current = start_dt
     while current < stop_dt:
@@ -268,14 +288,16 @@ def run_fuel_meter(meter_id: int, cfg: dict):
             F = randwalk_towards(F, F_tgt, step_ratio=0.16, jitter_ratio=0.025,
                                  min_val=cfg["F_min"], max_val=cfg["F_max"], rng=rng)
 
-            inc_ml_per_min = int(round(F * 1000.0 * 60.0))  # L/s → mL/s × 60
-            if inc_ml_per_min < 0:
-                inc_ml_per_min = 0
-            consumption_ml += inc_ml_per_min
+            # Convert FUEL volume flow to mass using density (kg/L)
+            FUEL_DENSITY_KG_PER_L = 0.85
+            inc_g_per_min = int(round((F * FUEL_DENSITY_KG_PER_L) * 1000.0 * 60.0))  # kg/s → g/s × 60
+            if inc_g_per_min < 0:
+                inc_g_per_min = 0
+            consumption_ml += inc_g_per_min  # cumulative grams
 
             T_deciC = int(round(T * 10.0))     # °C × 10
             P_mbar  = int(round(P * 1000.0))   # bar × 1000
-            F_mLps  = int(round(F * 1000.0))   # L/s × 1000 → mL/s
+            F_gps   = int(round((F * FUEL_DENSITY_KG_PER_L) * 1000.0))   # kg/s × 1000 → g/s
 
             point = (
                 Point(MEASUREMENT)
@@ -283,34 +305,34 @@ def run_fuel_meter(meter_id: int, cfg: dict):
                 .time(ts, WritePrecision.NS)
                 .field(f"{name}/Temperature", T_deciC)
                 .field(f"{name}/Pressure",    P_mbar)
-                .field(f"{name}/FlowRate",    F_mLps)
+                .field(f"{name}/FlowRate",    F_gps)
                 .field(f"{name}/Consumption", int(consumption_ml))
             )
             points.append(point)
             ts += ONE_STEP
 
         write_api.write(bucket=BUCKET, org=ORG, record=points)
-        print(f"[fuel{meter_id}] {name} — Day {day_end.date()} ({len(points)} pts)")
+        print(f"[fuel{meter_id}] {name} -- Day {day_end.date()} ({len(points)} pts)")
         sys.stdout.flush()
         current = day_end
 
     client.close()
-    print(f"[Thread fuel{meter_id}] {name} — done.")
+    print(f"[Thread fuel{meter_id}] {name} -- done.")
 
-# ──────────────────────────────────────────────────────────────────────────
+# ========================================================================
 #                                   MAIN
-# ──────────────────────────────────────────────────────────────────────────
+# ========================================================================
 
 if __name__ == "__main__":
-    print("────────────────────────────────────────────────────────")
-    print("Gas & Fuel generator — starting")
+    print("========================================================")
+    print("Gas & Fuel generator -- starting")
     print(f"  Influx:   {INFLUX_URL}")
     print(f"  Org/Bkt:  {ORG}/{BUCKET}")
     print(f"  Measure:  {MEASUREMENT}")
     print(f"  Tag:      {TAG_KEY}={TAG_VALUE}")
-    print(f"  Range:    {START} → {STOP}  (STEP={STEP_SECONDS}s)")
+    print(f"  Range:    {START} -> {STOP}  (STEP={STEP_SECONDS}s)")
     print("  Meters:   gasmeter0, gasmeter1, fuelmeter0")
-    print("────────────────────────────────────────────────────────")
+    print("========================================================")
     sys.stdout.flush()
 
     threads = []

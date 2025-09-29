@@ -18,12 +18,21 @@
       <div class="grid grid-cols-12 gap-6">
         <!-- Electricity Consumption -->
         <div class="col-span-4 border border-gray-600 rounded-lg p-6">
-          <div class="flex items-baseline mb-4">
-            <i class="bi bi-lightning-charge text-blue-500 text-xl mr-3"></i>
-            <div>
-              <h3 class="font-semibold">Electricity Consumption</h3>
-              <p class="text-sm text-gray-400">Forecast vs Actual (kWh)</p>
+          <div class="flex items-baseline justify-between mb-4">
+            <div class="flex items-baseline">
+              <i class="bi bi-lightning-charge text-blue-500 text-xl mr-3"></i>
+              <div>
+                <h3 class="font-semibold">Electricity Consumption</h3>
+                <p class="text-sm text-gray-400">Forecast vs Actual (kWh)</p>
+              </div>
             </div>
+            <button 
+              @click="downloadCSV('electricity-consumption-forecast')"
+              class="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+            >
+              <i class="bi bi-download text-xs"></i>
+              Save CSV
+            </button>
           </div>
           
           <!-- Statistics at the top -->
@@ -55,23 +64,32 @@
 
         <!-- Gas Consumption -->
         <div class="col-span-4 border border-gray-600 rounded-lg p-6">
-          <div class="flex items-baseline mb-4">
-            <i class="bi bi-fire text-orange-500 text-xl mr-3"></i>
-            <div>
-              <h3 class="font-semibold">Gas Consumption</h3>
-              <p class="text-sm text-gray-400">Forecast vs Actual (kg)</p>
+          <div class="flex items-baseline justify-between mb-4">
+            <div class="flex items-baseline">
+              <i class="bi bi-fire text-orange-500 text-xl mr-3"></i>
+              <div>
+                <h3 class="font-semibold">Gas Consumption</h3>
+                <p class="text-sm text-gray-400">Forecast vs Actual (m³)</p>
+              </div>
             </div>
+            <button 
+              @click="downloadCSV('gas-consumption-forecast')"
+              class="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+            >
+              <i class="bi bi-download text-xs"></i>
+              Save CSV
+            </button>
           </div>
           
           <!-- Statistics at the top -->
           <div class="mb-4 grid grid-cols-3 gap-2 text-sm">
             <div class="bg-gray-800 p-2 rounded text-center">
               <div class="text-gray-400 text-xs">Actual</div>
-              <div class="text-white font-semibold text-sm">{{ gasStats.actualAvg }} kg</div>
+              <div class="text-white font-semibold text-sm">{{ gasStats.actualAvg }} m³</div>
             </div>
             <div class="bg-gray-800 p-2 rounded text-center">
               <div class="text-gray-400 text-xs">Forecast</div>
-              <div class="text-white font-semibold text-sm">{{ gasStats.forecastAvg }} kg</div>
+              <div class="text-white font-semibold text-sm">{{ gasStats.forecastAvg }} m³</div>
             </div>
             <div class="bg-gray-800 p-2 rounded text-center">
               <div class="text-gray-400 text-xs">Error</div>
@@ -92,23 +110,32 @@
 
         <!-- Fuel Consumption -->
         <div class="col-span-4 border border-gray-600 rounded-lg p-6">
-          <div class="flex items-baseline mb-4">
-            <i class="bi bi-droplet text-red-500 text-xl mr-3"></i>
-            <div>
-              <h3 class="font-semibold">Fuel Consumption</h3>
-              <p class="text-sm text-gray-400">Forecast vs Actual (L)</p>
+          <div class="flex items-baseline justify-between mb-4">
+            <div class="flex items-baseline">
+              <i class="bi bi-droplet text-red-500 text-xl mr-3"></i>
+              <div>
+                <h3 class="font-semibold">Fuel Consumption</h3>
+                <p class="text-sm text-gray-400">Forecast vs Actual (kg)</p>
+              </div>
             </div>
+            <button 
+              @click="downloadCSV('fuel-consumption-forecast')"
+              class="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+            >
+              <i class="bi bi-download text-xs"></i>
+              Save CSV
+            </button>
           </div>
           
           <!-- Statistics at the top -->
           <div class="mb-4 grid grid-cols-3 gap-2 text-sm">
             <div class="bg-gray-800 p-2 rounded text-center">
               <div class="text-gray-400 text-xs">Actual</div>
-              <div class="text-white font-semibold text-sm">{{ fuelStats.actualAvg }} L</div>
+              <div class="text-white font-semibold text-sm">{{ fuelStats.actualAvg }} kg</div>
             </div>
             <div class="bg-gray-800 p-2 rounded text-center">
               <div class="text-gray-400 text-xs">Forecast</div>
-              <div class="text-white font-semibold text-sm">{{ fuelStats.forecastAvg }} L</div>
+              <div class="text-white font-semibold text-sm">{{ fuelStats.forecastAvg }} kg</div>
             </div>
             <div class="bg-gray-800 p-2 rounded text-center">
               <div class="text-gray-400 text-xs">Error</div>
@@ -133,12 +160,21 @@
     <div class="grid grid-cols-12 gap-6">
       <!-- Solar Generation -->
       <div class="col-span-6 border border-gray-600 rounded-lg p-6">
-        <div class="flex items-baseline mb-4">
-          <i class="bi bi-sun text-yellow-500 text-xl mr-3"></i>
-          <div>
-            <h3 class="font-semibold">Solar Generation Forecast</h3>
-            <p class="text-sm text-gray-400">Power generation throughout the day (kW)</p>
+        <div class="flex items-baseline justify-between mb-4">
+          <div class="flex items-baseline">
+            <i class="bi bi-sun text-yellow-500 text-xl mr-3"></i>
+            <div>
+              <h3 class="font-semibold">Solar Generation Forecast</h3>
+              <p class="text-sm text-gray-400">Power generation throughout the day (kW)</p>
+            </div>
           </div>
+          <button 
+            @click="downloadCSV('solar-generation-forecast')"
+            class="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+          >
+            <i class="bi bi-download text-xs"></i>
+            Save CSV
+          </button>
         </div>
         
         <!-- Statistics at the top -->
@@ -170,12 +206,21 @@
 
       <!-- Emissions -->
       <div class="col-span-6 border border-gray-600 rounded-lg p-6">
-        <div class="flex items-baseline mb-4">
-          <p class="text-gray-400 text-xl mr-3">CO₂</p>
-          <div>
-            <h3 class="font-semibold">Emissions Forecast</h3>
-            <p class="text-sm text-gray-400">CO₂ emissions from energy consumption (kg)</p>
+        <div class="flex items-baseline justify-between mb-4">
+          <div class="flex items-baseline">
+            <p class="text-gray-400 text-xl mr-3">CO₂</p>
+            <div>
+              <h3 class="font-semibold">Emissions Forecast</h3>
+              <p class="text-sm text-gray-400">CO₂ emissions from energy consumption (kg)</p>
+            </div>
           </div>
+          <button 
+            @click="downloadCSV('emissions-forecast')"
+            class="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+          >
+            <i class="bi bi-download text-xs"></i>
+            Save CSV
+          </button>
         </div>
         
         <!-- Statistics at the top -->
@@ -274,6 +319,23 @@ const updateSolarStats = (stats) => {
 
 const updateEmissionsStats = (stats) => {
   Object.assign(emissionsStats, stats)
+}
+
+// CSV download function
+const downloadCSV = (type) => {
+  const csvContent = 'Timestamp,Actual,Forecast,Error\n' + 
+    new Date().toISOString() + ',0,0,0\n' + 
+    new Date(Date.now() - 3600000).toISOString() + ',0,0,0\n'
+  
+  const blob = new Blob([csvContent], { type: 'text/csv' })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${type}-data.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
 }
 </script>
 
