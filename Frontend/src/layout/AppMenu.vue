@@ -53,12 +53,21 @@ const model = ref([
 
 
     {
-        // label: 'Monitoring',
+        label: 'Monitoring',
        
 
         items: [
             { label: 'Overview', icon: icons["home"], to: '/' },
             { label: 'Unifilaire', icon: icons["plug"], to: '/unifilaire' },
+           
+        ]
+    },
+    {
+        label: 'Devices',
+       
+
+        items: [
+           
             { 
                 label: 'Electricity Meters', 
                 icon: icons["electricity"], 
@@ -76,8 +85,23 @@ const model = ref([
                 to: '/fuel-meters?meterId=fm-0&meterName=Fuel%20Meter%200%20-%20Chaudière'
             },
             { label: 'Solar Power', icon: icons["sun"], to: '/pv' },
+
+        ]
+    },
+    {
+        label: 'Analysis',
+       
+
+        items: [
+
             { label: 'Forecasting', icon: icons["history"], to: '/forecasting' },
             { label: 'Reports', icon: icons["file"], to: '/reports' },
+
+        ]
+    },
+    {
+        label: 'MANAGEMENT',
+        items: [
             { label: 'Settings', icon: icons["settings"], to: '/settings' },
             { label: 'Support', icon: icons["support"], to: '/support' },
         ]

@@ -242,7 +242,7 @@ const settings = reactive({
   timeFormat: '24h',
   weightUnit: 'kg',
   volumeUnit: 'L',
-  currency: 'USD'
+  currency: 'MAD'
 })
 
 // Currency options
